@@ -1,0 +1,2126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Lumin · BBT Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0a08;--surface:#15110e;--surface2:#1e1812;--border:#2e2520;
+  --text:#f0e8df;--text-dim:#8a7b6e;--text-muted:#4a3f36;
+  --gold:#c9a96e;--gold-dim:#7a5f3a;--rose:#d4877a;--sage:#7aab8a;
+  --lavender:#9b8fc4;--amber:#d4a76a;--sky:#7aabc9;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;min-height:100vh;padding-bottom:40px;}
+
+/* ── HEADER ── */
+header{padding:14px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg);}
+.logo{font-family:'Playfair Display',serif;font-size:22px;color:var(--gold);font-style:italic;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.cycle-switcher{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px;}
+.cycle-switcher-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:0.08em;}
+.cycle-arrow{background:none;border:none;color:var(--text-muted);font-size:16px;padding:0 2px;cursor:pointer;line-height:1;}
+.settings-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:16px;padding:4px 8px;cursor:pointer;}
+
+/* ── MAIN VIEW ── */
+.main-view{padding:16px 20px;display:flex;flex-direction:column;gap:16px;}
+
+/* Daily card */
+.daily-card{border-radius:14px;padding:16px;border:1px solid var(--border);background:var(--surface2);}
+.daily-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.daily-phase{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;}
+.daily-emoji{font-size:22px;}
+.daily-insight{font-family:'Playfair Display',serif;font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px;}
+.daily-tip-wrap{border-top:1px solid var(--border);padding-top:8px;}
+.daily-tip-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:3px;}
+.daily-tip{font-size:11px;color:var(--text-dim);line-height:1.55;}
+
+/* Period countdown */
+.countdown-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;}
+.countdown-label{font-size:12px;color:var(--text-muted);}
+.countdown-val{font-family:'DM Mono',monospace;font-size:18px;color:var(--gold);}
+
+/* Chart */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;}
+.chart-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.chart-card-title{font-family:'Playfair Display',serif;font-size:16px;color:var(--text);}
+.chart-card-title em{color:var(--gold);font-style:italic;}
+.chart-actions{display:flex;gap:6px;}
+.action-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;padding:4px 9px;cursor:pointer;text-transform:uppercase;}
+canvas{display:block;width:100%;}
+.phase-legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.pl-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);}
+.pl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* Tabs */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:0;}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:8px 14px;cursor:pointer;margin-bottom:-1px;}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* Entries */
+.entries-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.entries-header{padding:11px 16px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;cursor:pointer;border-bottom:1px solid transparent;}
+.entries-header.open{border-bottom-color:var(--border);}
+.log-table{width:100%;border-collapse:collapse;}
+.log-table th{padding:6px 12px;text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);font-weight:400;}
+.log-table td{padding:7px 12px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--surface2);}
+.log-table tr:last-child td{border-bottom:none;}
+.temp-cell{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);}
+.phase-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;}
+.del-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;padding:2px 5px;}
+.edit-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);cursor:pointer;font-size:10px;font-family:'DM Mono',monospace;padding:2px 6px;}
+.empty-state{padding:28px 20px;text-align:center;color:var(--text-muted);font-family:'Playfair Display',serif;font-style:italic;font-size:13px;}
+
+/* Pattern cards */
+.pattern-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:14px;}
+.pattern-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.pattern-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-bottom:4px;}
+.pattern-bar{height:4px;border-radius:2px;}
+
+/* ── LOG SHEET ── */
+.sheet-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:70;display:none;pointer-events:none;}
+.sheet-overlay.open{display:block;pointer-events:auto;}
+.log-sheet{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;z-index:80;max-height:92vh;overflow-y:auto;display:none;}
+.log-sheet.open{display:block;}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 0;}
+.sheet-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);}
+.sheet-close{background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:0 4px;line-height:1;}
+.sheet-body{padding:16px 20px 32px;}
+
+/* Sheet date row */
+.sheet-date-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.date-arrow{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-size:18px;padding:0;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.date-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 10px;flex:1;outline:none;color-scheme:dark;height:36px;-webkit-appearance:none;min-width:0;text-align:center;}
+.sheet-date-label{font-family:'Playfair Display',serif;font-size:14px;color:var(--text);margin-bottom:14px;}
+
+/* Logged display in sheet */
+.logged-display{background:rgba(122,171,138,0.08);border:1px solid var(--sage);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.logged-temp{font-family:'DM Mono',monospace;font-size:22px;color:var(--sage);}
+.logged-meta{font-size:11px;color:var(--text-muted);text-align:right;line-height:1.5;}
+
+/* Temp input */
+.temp-big{background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;font-size:28px;padding:14px 16px;width:100%;outline:none;margin-bottom:14px;text-align:center;letter-spacing:0.05em;}
+.temp-big:focus{border-color:var(--gold-dim);}
+
+/* Tag sections */
+.tag-section-label{font-size:10px;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
+.tags-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;}
+.tag{font-size:11px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;-webkit-user-select:none;user-select:none;}
+.tag.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+.tag.period-tag.active{background:rgba(212,135,122,0.2);border-color:var(--rose);color:var(--rose);}
+.tag.peak-tag.active{background:rgba(154,139,196,0.2);border-color:var(--lavender);color:var(--lavender);}
+.tag.sym-tag.active{background:rgba(122,171,196,0.15);border-color:var(--sky);color:var(--sky);}
+.tag.mood-tag.active{background:rgba(212,167,106,0.15);border-color:var(--amber);color:var(--amber);}
+.notes-input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:10px 14px;width:100%;outline:none;resize:none;height:60px;margin-bottom:14px;}
+.save-btn{width:100%;background:linear-gradient(135deg,var(--gold-dim),#6a4f2a);border:1px solid var(--gold-dim);border-radius:10px;color:var(--gold);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;padding:14px;cursor:pointer;}
+.sym-save-btn{width:100%;background:linear-gradient(135deg,rgba(122,171,196,0.2),rgba(122,171,196,0.05));border:1px solid var(--sky);border-radius:10px;color:var(--sky);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;padding:14px;cursor:pointer;}
+.sheet-divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+
+/* ── CYCLES SHEET ── */
+.cycles-sheet{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;z-index:80;max-height:80vh;overflow-y:auto;display:none;}
+.cycles-sheet.open{display:block;}
+.cycle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--surface2);cursor:pointer;}
+.cycle-row.active-cycle{background:rgba(201,169,110,0.06);}
+.cycle-row-left{display:flex;flex-direction:column;gap:3px;}
+.cycle-row-name{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);}
+.cycle-row-date{font-size:11px;color:var(--text-muted);}
+.cycle-row-right{font-size:11px;color:var(--text-muted);}
+
+/* Toast */
+.toast{position:fixed;bottom:90px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);background:var(--surface2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);opacity:0;pointer-events:none;z-index:200;-webkit-transition:opacity 0.3s;transition:opacity 0.3s;white-space:nowrap;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loadingScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0d0a08;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;">
+  <div style="font-family:'Playfair Display',serif;font-size:32px;color:#c9a96e;font-style:italic;margin-bottom:12px;">Lumin</div>
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#4a3f36;letter-spacing:0.14em;text-transform:uppercase;">Loading your data...</div>
+</div>
+
+<!-- APP ROOT -->
+<div id="appRoot" style="display:none;">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Lumin</div>
+  <div class="header-right">
+    <div class="cycle-switcher" onclick="openCyclesSheet()">
+      <button class="cycle-arrow" onclick="event.stopPropagation();prevCycle()">&#8249;</button>
+      <div class="cycle-switcher-label" id="cycleLabel">Cycle 1</div>
+      <button class="cycle-arrow" onclick="event.stopPropagation();nextCycle()">&#8250;</button>
+    </div>
+    <button class="settings-btn" onclick="openCyclesSheet()">&#9881;</button>
+    <button onclick="openLogSheet()" style="background:linear-gradient(135deg,var(--gold-dim),#8a6030);border:1px solid var(--gold);border-radius:22px;color:var(--gold);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.1em;padding:9px 20px;cursor:pointer;box-shadow:0 2px 12px rgba(201,169,110,0.2);">+ Log</button>
+  </div>
+</header>
+
+<!-- MAIN VIEW -->
+<div class="main-view">
+
+  <!-- Daily card -->
+  <div class="daily-card" id="dailyCard" style="display:none;">
+    <div class="daily-top">
+      <div class="daily-phase" id="dailyPhaseLabel">—</div>
+      <div class="daily-emoji" id="dailyEmoji">🌱</div>
+    </div>
+    <div class="daily-insight" id="dailyInsight">—</div>
+    <div class="daily-tip-wrap">
+      <div class="daily-tip-label">Today's tip</div>
+      <div class="daily-tip" id="dailyTip">—</div>
+    </div>
+    <div id="personalInsight" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--gold);line-height:1.55;"></div>
+  </div>
+
+  <!-- Period countdown -->
+  <div class="countdown-bar">
+    <div class="countdown-label">Next period est.</div>
+    <div class="countdown-val" id="statNextPeriod">—</div>
+  </div>
+
+  <!-- Chart with all tabs -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div class="chart-card-title">Basal Body <em>Temperature</em></div>
+      <div class="chart-actions">
+        <button class="action-btn" onclick="openDoctorExport()">Export</button>
+        <button class="action-btn" onclick="exportCSV()">CSV</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabCycle" onclick="switchTab('cycle')">This Cycle</button>
+      <button class="tab-btn" id="tabOverview" onclick="switchTab('overview')">All Cycles</button>
+      <button class="tab-btn" id="tabPatterns" onclick="switchTab('patterns')">Patterns</button>
+    </div>
+    <div id="panelCycle" style="padding-top:12px;">
+      <canvas id="bbtChart" height="220"></canvas>
+      <div class="phase-legend-row">
+        <div class="pl-item"><div class="pl-dot" style="background:rgba(122,171,138,0.4);border:1px solid #7aab8a;border-radius:2px;width:9px;height:7px;"></div>Fertile window</div>
+        <div class="pl-item" style="margin-left:8px;"><div style="width:18px;height:1px;background:#c9a96e;border-top:1px dashed #c9a96e;display:inline-block;vertical-align:middle;margin-right:4px;"></div>97.95°F</div>
+      </div>
+    </div>
+    <div id="panelOverview" style="display:none;padding-top:12px;">
+      <div id="miniChartsContainer"></div>
+    </div>
+    <div id="panelPatterns" style="display:none;">
+      <div id="patternsBody"><div class="empty-state">Log symptoms to reveal patterns.</div></div>
+    </div>
+  </div>
+
+  <!-- Entries -->
+  <div class="entries-card">
+    <div class="entries-header" id="entriesHeader" onclick="toggleEntries()">
+      <span>Entries</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="entryCount" style="color:var(--text-muted);font-size:10px;">0 logged</span>
+        <span id="entriesChevron" style="color:var(--text-muted);font-size:16px;line-height:1;">&#8964;</span>
+      </div>
+    </div>
+    <div id="logBody" style="display:none;"><div class="empty-state">No entries yet.</div></div>
+  </div>
+
+</div>
+
+<!-- OVERLAY -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeAllSheets()"></div>
+
+<!-- LOG SHEET -->
+<div class="log-sheet" id="logSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Log Day</div>
+    <button class="sheet-close" onclick="closeLogSheet()">&#215;</button>
+  </div>
+  <div class="sheet-body">
+    <!-- Date picker -->
+    <div class="sheet-date-row">
+      <button class="date-arrow" onclick="shiftDate(-1)">&#8249;</button>
+      <input type="date" class="date-input" id="dateInput" onchange="onDateChange()">
+      <button class="date-arrow" onclick="shiftDate(1)">&#8250;</button>
+    </div>
+    <div class="sheet-date-label" id="dateLabel">—</div>
+
+    <!-- Logged display -->
+    <div class="logged-display" id="loggedDisplay" style="display:none;">
+      <div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;font-family:'DM Mono',monospace;letter-spacing:0.08em;">LOGGED</div>
+        <div class="logged-temp" id="loggedTemp">—</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div class="logged-meta" id="loggedMeta"></div>
+        <button class="edit-btn" style="border-color:var(--sage);color:var(--sage);" onclick="editFromDisplay()">Edit</button>
+      </div>
+    </div>
+
+    <!-- Log form -->
+    <div id="logForm">
+      <input type="number" class="temp-big" id="tempInput" placeholder="97.XX" step="0.01" min="95" max="100">
+      <div class="tag-section-label">Temp quality</div>
+      <div class="tags-row">
+        <span class="tag peak-tag" data-tag="peak" onclick="toggleTag(this)">Peak CM</span>
+        <span class="tag" data-tag="disturbed" onclick="toggleTag(this)">Disturbed Sleep</span>
+        <span class="tag" data-tag="alcohol" onclick="toggleTag(this)">Alcohol</span>
+        <span class="tag" data-tag="sick" onclick="toggleTag(this)">Sick</span>
+      </div>
+      <textarea class="notes-input" id="notesInput" placeholder="Notes..."></textarea>
+      <button class="save-btn" onclick="logEntry()">Save</button>
+    </div>
+
+    <!-- Symptoms always visible regardless of temp logged -->
+    <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:14px;">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Log symptoms any time — saved to this date.</div>
+
+      <div class="tag-section-label" style="color:var(--rose);">Cycle & Bleeding</div>
+      <div class="tags-row">
+        <span class="tag sym-tag" data-tag="period" onclick="toggleSymTag(this)">Period</span>
+        <span class="tag sym-tag" data-tag="period light" onclick="toggleSymTag(this)">Light Flow</span>
+        <span class="tag sym-tag" data-tag="period heavy" onclick="toggleSymTag(this)">Heavy Flow</span>
+        <span class="tag sym-tag" data-tag="spotting" onclick="toggleSymTag(this)">Spotting</span>
+        <span class="tag sym-tag" data-tag="pms" onclick="toggleSymTag(this)">PMS</span>
+        <span class="tag sym-tag" data-tag="cramps" onclick="toggleSymTag(this)">Cramps</span>
+        <span class="tag sym-tag" data-tag="pelvic pain" onclick="toggleSymTag(this)">Pelvic Pain</span>
+        <span class="tag sym-tag" data-tag="breast tenderness" onclick="toggleSymTag(this)">Breast Tender</span>
+        <span class="tag sym-tag" data-tag="acne" onclick="toggleSymTag(this)">Acne</span>
+      </div>
+
+      <div class="tag-section-label" style="color:var(--amber);">Digestive</div>
+      <div class="tags-row">
+        <span class="tag sym-tag" data-tag="bloating" onclick="toggleSymTag(this)">Bloating</span>
+        <span class="tag sym-tag" data-tag="gas" onclick="toggleSymTag(this)">Gas</span>
+        <span class="tag sym-tag" data-tag="nausea" onclick="toggleSymTag(this)">Nausea</span>
+        <span class="tag sym-tag" data-tag="constipation" onclick="toggleSymTag(this)">Constipation</span>
+        <span class="tag sym-tag" data-tag="diarrhea" onclick="toggleSymTag(this)">Diarrhea</span>
+        <span class="tag sym-tag" data-tag="appetite changes" onclick="toggleSymTag(this)">Appetite Changes</span>
+      </div>
+
+      <div class="tag-section-label" style="color:var(--sky);">Body</div>
+      <div class="tags-row">
+        <span class="tag sym-tag" data-tag="fatigue" onclick="toggleSymTag(this)">Fatigue</span>
+        <span class="tag sym-tag" data-tag="headache" onclick="toggleSymTag(this)">Headache</span>
+        <span class="tag sym-tag" data-tag="back pain" onclick="toggleSymTag(this)">Back Pain</span>
+        <span class="tag sym-tag" data-tag="joint pain" onclick="toggleSymTag(this)">Joint Pain</span>
+        <span class="tag sym-tag" data-tag="lightheadedness" onclick="toggleSymTag(this)">Lightheaded</span>
+        <span class="tag sym-tag" data-tag="palpitations" onclick="toggleSymTag(this)">Palpitations</span>
+        <span class="tag sym-tag" data-tag="insomnia" onclick="toggleSymTag(this)">Insomnia</span>
+        <span class="tag sym-tag" data-tag="brain fog" onclick="toggleSymTag(this)">Brain Fog</span>
+      </div>
+
+      <div class="tag-section-label" style="color:#c9a96e;">Histamine</div>
+      <div class="tags-row">
+        <span class="tag sym-tag" data-tag="itchy eyes" onclick="toggleSymTag(this)">Itchy Eyes</span>
+        <span class="tag sym-tag" data-tag="itchy skin" onclick="toggleSymTag(this)">Itchy Skin</span>
+        <span class="tag sym-tag" data-tag="hives" onclick="toggleSymTag(this)">Hives</span>
+        <span class="tag sym-tag" data-tag="runny nose" onclick="toggleSymTag(this)">Runny Nose</span>
+        <span class="tag sym-tag" data-tag="sneezing" onclick="toggleSymTag(this)">Sneezing</span>
+        <span class="tag sym-tag" data-tag="flushing" onclick="toggleSymTag(this)">Flushing</span>
+      </div>
+
+      <div class="tag-section-label" style="color:var(--lavender);">Mood</div>
+      <div class="tags-row">
+        <span class="tag mood-tag" data-tag="anxious" onclick="toggleSymTag(this)">Anxious</span>
+        <span class="tag mood-tag" data-tag="irritable" onclick="toggleSymTag(this)">Irritable</span>
+        <span class="tag mood-tag" data-tag="low mood" onclick="toggleSymTag(this)">Low Mood</span>
+        <span class="tag mood-tag" data-tag="energetic" onclick="toggleSymTag(this)">Energetic</span>
+        <span class="tag mood-tag" data-tag="calm" onclick="toggleSymTag(this)">Calm</span>
+        <span class="tag mood-tag" data-tag="sick" onclick="toggleSymTag(this)">Sick/Ill</span>
+      </div>
+      <div class="tag-section-label" style="color:var(--lavender);">Ovulation</div>
+      <div class="tags-row">
+        <span class="tag sym-tag" data-tag="mittelschmerz" onclick="toggleSymTag(this)">Mittelschmerz</span>
+        <span class="tag sym-tag" data-tag="egg white cm" onclick="toggleSymTag(this)">Egg White CM</span>
+        <span class="tag sym-tag" data-tag="increased libido" onclick="toggleSymTag(this)">Increased Libido</span>
+        <span class="tag sym-tag" data-tag="breast sensitivity" onclick="toggleSymTag(this)">Breast Sensitivity</span>
+        <span class="tag sym-tag" data-tag="light spotting" onclick="toggleSymTag(this)">Light Spotting</span>
+      </div>
+
+      <div id="symLoggedDisplay" style="display:none;background:rgba(122,171,196,0.08);border:1px solid var(--sky);border-radius:8px;padding:8px 12px;margin-top:4px;">
+        <div style="font-size:9px;color:var(--sky);font-family:'DM Mono',monospace;letter-spacing:0.08em;margin-bottom:3px;">LOGGED TODAY</div>
+        <div id="symLoggedText" style="font-size:11px;color:var(--text-dim);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CYCLES SHEET -->
+<div class="cycles-sheet" id="cyclesSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Your Cycles</div>
+    <button class="sheet-close" onclick="closeCyclesSheet()">&#215;</button>
+  </div>
+  <div style="padding:16px 20px 8px;">
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Tap a cycle to view it. Long-press start date to edit.</div>
+    <div id="cyclesList"></div>
+    <div id="editStartDateWrap" style="display:none;background:rgba(201,169,110,0.08);border:1px solid var(--gold-dim);border-radius:10px;padding:12px;margin-top:10px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Edit cycle start date:</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" class="date-input" id="editStartDateInput" style="flex:1;">
+        <button onclick="saveEditStartDate()" style="background:none;border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-family:'DM Mono',monospace;font-size:10px;padding:0 12px;height:36px;cursor:pointer;">Save</button>
+        <button onclick="cancelEditStartDate()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:10px;padding:0 12px;height:36px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+    <div id="deleteConfirm" style="display:none;background:rgba(212,135,122,0.1);border:1px solid var(--rose);border-radius:10px;padding:12px;margin-top:10px;">
+      <div style="font-size:12px;color:var(--text);margin-bottom:10px;" id="deleteConfirmMsg">Delete this cycle?</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="confirmDelete()" style="flex:1;background:var(--rose);border:none;border-radius:7px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;padding:9px;cursor:pointer;">Delete</button>
+        <button onclick="cancelDelete()" style="flex:1;background:none;border:1px solid var(--border);border-radius:7px;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:11px;padding:9px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;">
+    <!-- New cycle -->
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Start a new cycle from:</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;">
+      <input type="date" class="date-input" id="newCycleDate" style="flex:1;text-align:left;">
+      <button onclick="startNewCycle()" style="background:none;border:1px solid var(--sage);border-radius:8px;color:var(--sage);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;padding:0 14px;height:36px;cursor:pointer;white-space:nowrap;">+ New Cycle</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- REPORT OVERLAY -->
+<div id="reportOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:600;overflow-y:auto;">
+  <div style="max-width:720px;margin:0 auto;padding:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;">
+      <button onclick="window.print()" style="background:#2a1f14;color:#f5f0eb;border:none;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:Georgia,serif;flex-shrink:0;">Print / Save PDF</button>
+      <button onclick="closeReport()" style="background:none;border:1px solid #ddd;border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;color:#888;flex-shrink:0;">&#215; Close</button>
+    </div>
+    <div id="reportContent"></div>
+  </div>
+</div>
+
+<!-- ONBOARDING OVERLAY -->
+<div id="onboarding" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0d0a08;z-index:500;overflow-y:auto;padding:40px 28px;">
+  <div style="max-width:360px;margin:0 auto;">
+    <div style="font-family:'Playfair Display',serif;font-size:34px;color:#c9a96e;font-style:italic;margin-bottom:8px;">Lumin</div>
+    <div style="font-size:13px;color:#8a7b6e;margin-bottom:40px;line-height:1.6;">Your personal BBT cycle tracker.</div>
+
+    <div style="font-family:'Playfair Display',serif;font-size:20px;color:#f0e8df;margin-bottom:6px;">When did your last period start?</div>
+    <div style="font-size:12px;color:#4a3f36;margin-bottom:16px;">This becomes Day 1 of your current cycle.</div>
+    <input type="date" id="onboardingDate" style="background:#1e1812;border:1px solid #2e2520;border-radius:10px;color:#f0e8df;font-family:'DM Mono',monospace;font-size:14px;padding:14px 16px;width:100%;outline:none;color-scheme:dark;-webkit-appearance:none;margin-bottom:28px;">
+
+    <div style="font-family:'Playfair Display',serif;font-size:20px;color:#f0e8df;margin-bottom:6px;">Are you still in that cycle?</div>
+    <div style="font-size:12px;color:#4a3f36;margin-bottom:16px;">i.e. your next period hasn't started yet.</div>
+    <div style="display:flex;gap:10px;margin-bottom:40px;">
+      <button id="onboardYes" onclick="selectOnboardCycle('yes')" style="flex:1;background:#1e1812;border:1px solid #2e2520;border-radius:10px;color:#8a7b6e;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;padding:14px;cursor:pointer;">Yes, still in it</button>
+      <button id="onboardNo" onclick="selectOnboardCycle('no')" style="flex:1;background:#1e1812;border:1px solid #2e2520;border-radius:10px;color:#8a7b6e;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;padding:14px;cursor:pointer;">No, new cycle since</button>
+    </div>
+
+    <div id="newCycleSinceWrap" style="display:none;margin-bottom:28px;">
+      <div style="font-size:12px;color:#8a7b6e;margin-bottom:10px;">When did your most recent period start?</div>
+      <input type="date" id="onboardingDate2" style="background:#1e1812;border:1px solid #2e2520;border-radius:10px;color:#f0e8df;font-family:'DM Mono',monospace;font-size:14px;padding:14px 16px;width:100%;outline:none;color-scheme:dark;-webkit-appearance:none;">
+    </div>
+
+    <button onclick="finishOnboarding()" style="width:100%;background:linear-gradient(135deg,#7a5f3a,#6a4f2a);border:1px solid #7a5f3a;border-radius:12px;color:#c9a96e;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;padding:16px;cursor:pointer;">Start Tracking</button>
+
+    <div style="font-size:10px;color:#4a3f36;text-align:center;margin-top:20px;line-height:1.6;">Lumin is a wellness tool for body literacy.<br>Not medical advice or a contraceptive device.</div>
+  </div>
+</div>
+
+</div><!-- end appRoot -->
+
+<script>
+var COVER_LINE = 97.95;
+var activeTags = {};
+var state = { cycles: [], currentCycleIdx: 0 };
+var ALL_SYMPTOMS = ['period','period light','period heavy','spotting','pms','cramps','pelvic pain','breast tenderness','acne','bloating','gas','nausea','constipation','diarrhea','appetite changes','fatigue','headache','back pain','joint pain','lightheadedness','palpitations','insomnia','brain fog','itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','mittelschmerz','egg white cm','increased libido','breast sensitivity','light spotting','anxious','irritable','low mood','energetic','calm','sick'];
+
+// ─── STORAGE ─────────────────────────────────────────────────────────────────
+var STORAGE_KEY = 'lumin_bbt_v2';
+
+function loadState() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      var p = JSON.parse(raw);
+      if (p && p.cycles && p.cycles.length > 0) {
+        state = migrateState(p);
+        return;
+      }
+    }
+  } catch(e) {}
+  // Only reach here if truly no data exists at all
+  state = { cycles: [], currentCycleIdx: 0 };
+}
+
+function saveState() {
+  try {
+    // Safety check — never save empty state over existing data
+    var existing = localStorage.getItem(STORAGE_KEY);
+    if (state.cycles.length === 0 && existing) {
+      return; // refuse to overwrite real data with empty state
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function migrateState(p) {
+  // Future-proof: ensure all expected fields exist without wiping data
+  if (!p.cycles) p.cycles = [];
+  if (typeof p.currentCycleIdx !== 'number') p.currentCycleIdx = 0;
+  if (p.currentCycleIdx >= p.cycles.length) p.currentCycleIdx = p.cycles.length - 1;
+  for (var i = 0; i < p.cycles.length; i++) {
+    if (!p.cycles[i].entries) p.cycles[i].entries = [];
+    if (!p.cycles[i].id) p.cycles[i].id = Date.now() + i;
+    if (!p.cycles[i].startDate) p.cycles[i].startDate = todayStr();
+  }
+  return p;
+}
+
+function newCycleObj(d) { return { id: Date.now(), startDate: d, entries: [] }; }
+function currentCycle() { return state.cycles[state.currentCycleIdx]; }
+
+// ─── DATE HELPERS ────────────────────────────────────────────────────────────
+function todayStr() {
+  var d = new Date(); var m = d.getMonth()+1; var day = d.getDate();
+  return d.getFullYear()+'-'+(m<10?'0'+m:''+m)+'-'+(day<10?'0'+day:''+day);
+}
+function formatDate(s) {
+  if (!s) return '—';
+  var p = s.split('-'); if (p.length < 3) return s;
+  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mo[parseInt(p[1],10)-1]+' '+parseInt(p[2],10)+', '+p[0];
+}
+function formatDateShort(s) {
+  if (!s) return '—';
+  var p = s.split('-'); if (p.length < 3) return s;
+  var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mo[parseInt(p[1],10)-1]+' '+parseInt(p[2],10);
+}
+function cycleDayNum(cycle, dateStr) {
+  var s = new Date(cycle.startDate+'T12:00:00'); var c = new Date(dateStr+'T12:00:00');
+  return Math.round((c-s)/86400000)+1;
+}
+function addDays(dateStr, n) {
+  var d = new Date(dateStr+'T12:00:00'); d.setDate(d.getDate()+n);
+  var m = d.getMonth()+1; var day = d.getDate();
+  return d.getFullYear()+'-'+(m<10?'0'+m:''+m)+'-'+(day<10?'0'+day:''+day);
+}
+
+// ─── OVULATION ───────────────────────────────────────────────────────────────
+function findOvulation(entries) {
+  for (var i = 2; i < entries.length; i++) {
+    if (entries[i].temp > COVER_LINE && entries[i-1].temp > COVER_LINE && entries[i-2].temp > COVER_LINE)
+      return { ovIdx: Math.max(0, i-3), confirmIdxs: [i-2,i-1,i] };
+  }
+  return null;
+}
+function getPhase(cd, ovCD) {
+  if (cd <= 5) return 'menstrual';
+  var assumedOv = ovCD || 15; // default to CD15 if no confirmed OV
+  if (cd < assumedOv) return 'follicular';
+  if (cd === assumedOv) return 'ovulation';
+  return 'luteal';
+}
+var phaseColors = { menstrual:'#d4877a', follicular:'#d4a76a', ovulation:'#9b8fc4', luteal:'#7aab8a' };
+
+function getFertileWindow() {
+  var ovDays = [];
+  for (var i = 0; i < state.cycles.length; i++) {
+    var ents = state.cycles[i].entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+    var ov = findOvulation(ents); if (ov) ovDays.push(ov.ovIdx+1);
+  }
+  var avgOvCD = 14;
+  if (ovDays.length > 0) { var sum=0; for(var j=0;j<ovDays.length;j++) sum+=ovDays[j]; avgOvCD=Math.round(sum/ovDays.length); }
+  return { start: avgOvCD-5, end: avgOvCD+1, ovCD: avgOvCD, estimated: ovDays.length===0 };
+}
+
+// ─── PERSONAL LEARNING ENGINE ────────────────────────────────────────────────
+function buildProfile() {
+  // Analyses all past cycles to build a personal stats profile
+  var profile = {
+    avgCycleLen: 28,
+    avgLutealLen: null,
+    avgOvCD: 14,
+    avgPmsDaysBeforePeriod: null,  // how many days before period PMS tends to start
+    symptomPhaseMap: {},           // which phase each symptom tends to appear in
+    cycleCount: 0,
+    confidence: 'low'              // low / medium / high
+  };
+
+  var cycleLengths = [];
+  var lutealLengths = [];
+  var ovDays = [];
+  var pmsDaysBeforePeriod = [];
+
+  for (var i = 0; i < state.cycles.length; i++) {
+    var cyc = state.cycles[i];
+    var ents = cyc.entries.filter(function(e){ return e.temp !== null && e.temp !== undefined; });
+    ents.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+
+    // Cycle length (from start to next cycle start)
+    if (i < state.cycles.length - 1) {
+      var len = Math.round((new Date(state.cycles[i+1].startDate+'T12:00:00') - new Date(cyc.startDate+'T12:00:00')) / 86400000);
+      if (len > 15 && len < 50) cycleLengths.push(len);
+    }
+
+    var ovRes = findOvulation(ents);
+    if (ovRes) {
+      var ovCD = ovRes.ovIdx + 1;
+      ovDays.push(ovCD);
+      var luteal = ents.length - (ovRes.ovIdx + 1);
+      if (luteal > 0) lutealLengths.push(luteal);
+    }
+
+    // PMS: find earliest CD where pms was logged, work out days before next period
+    if (i < state.cycles.length - 1) {
+      var nextStart = state.cycles[i+1].startDate;
+      var allEnts = cyc.entries.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+      for (var ei = 0; ei < allEnts.length; ei++) {
+        var tags = allEnts[ei].tags || [];
+        if (tags.indexOf('pms') >= 0) {
+          var daysBeforePeriod = Math.round((new Date(nextStart+'T12:00:00') - new Date(allEnts[ei].date+'T12:00:00')) / 86400000);
+          if (daysBeforePeriod > 0 && daysBeforePeriod < 20) {
+            pmsDaysBeforePeriod.push(daysBeforePeriod);
+          }
+          break; // only first PMS log per cycle
+        }
+      }
+    }
+
+    // Symptom phase mapping
+    var cycleOvCD = ovRes ? (ovRes.ovIdx + 1) : null;
+    var allE = cyc.entries.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+    for (var ei2 = 0; ei2 < allE.length; ei2++) {
+      var etags = allE[ei2].tags || [];
+      var cd = cycleDayNum(cyc, allE[ei2].date);
+      var phase = getPhase(cd, cycleOvCD);
+      for (var ti = 0; ti < etags.length; ti++) {
+        if (ALL_SYMPTOMS.indexOf(etags[ti]) >= 0) {
+          if (!profile.symptomPhaseMap[etags[ti]]) profile.symptomPhaseMap[etags[ti]] = {};
+          profile.symptomPhaseMap[etags[ti]][phase] = (profile.symptomPhaseMap[etags[ti]][phase] || 0) + 1;
+        }
+      }
+    }
+  }
+
+  profile.cycleCount = state.cycles.length;
+
+  if (cycleLengths.length > 0) {
+    var s = 0; for (var c = 0; c < cycleLengths.length; c++) s += cycleLengths[c];
+    profile.avgCycleLen = Math.round(s / cycleLengths.length);
+  }
+  if (ovDays.length > 0) {
+    var s2 = 0; for (var c2 = 0; c2 < ovDays.length; c2++) s2 += ovDays[c2];
+    profile.avgOvCD = Math.round(s2 / ovDays.length);
+  }
+  if (lutealLengths.length > 0) {
+    var s3 = 0; for (var c3 = 0; c3 < lutealLengths.length; c3++) s3 += lutealLengths[c3];
+    profile.avgLutealLen = Math.round(s3 / lutealLengths.length);
+  }
+  if (pmsDaysBeforePeriod.length > 0) {
+    var s4 = 0; for (var c4 = 0; c4 < pmsDaysBeforePeriod.length; c4++) s4 += pmsDaysBeforePeriod[c4];
+    profile.avgPmsDaysBeforePeriod = Math.round(s4 / pmsDaysBeforePeriod.length);
+  }
+
+  if (state.cycles.length >= 5) profile.confidence = 'high';
+  else if (state.cycles.length >= 3) profile.confidence = 'medium';
+
+  return profile;
+}
+
+function getPersonalInsight(cd, phase, profile, todayTags) {
+  // Returns a personal insight string if data is available, otherwise null
+  var insights = [];
+
+  // PMS → period prediction
+  if (todayTags && todayTags.indexOf('pms') >= 0 && profile.avgPmsDaysBeforePeriod) {
+    insights.push('Based on your cycles, your period typically arrives ' + profile.avgPmsDaysBeforePeriod + ' day' + (profile.avgPmsDaysBeforePeriod !== 1 ? 's' : '') + ' after PMS starts.');
+  }
+
+  // Symptom pattern nudge — if this phase matches a known symptom pattern
+  var phaseSymptoms = [];
+  for (var sym in profile.symptomPhaseMap) {
+    if (!profile.symptomPhaseMap.hasOwnProperty(sym)) continue;
+    var phases = profile.symptomPhaseMap[sym];
+    if (phases[phase] && phases[phase] >= 2) {
+      phaseSymptoms.push(sym);
+    }
+  }
+  if (phaseSymptoms.length > 0 && profile.confidence !== 'low') {
+    var symList = phaseSymptoms.slice(0, 3).join(', ');
+    insights.push('You tend to experience ' + symList + ' during this phase.');
+  }
+
+  // Luteal length awareness
+  if (phase === 'luteal' && profile.avgLutealLen && profile.confidence !== 'low') {
+    insights.push('Your average luteal phase is ' + profile.avgLutealLen + ' days.');
+  }
+
+  return insights.length > 0 ? insights[0] : null;
+}
+
+// ─── SHEET CONTROLS ──────────────────────────────────────────────────────────
+function openLogSheet() {
+  document.getElementById('sheetOverlay').className = 'sheet-overlay open';
+  document.getElementById('logSheet').className = 'log-sheet open';
+  // Set date to today if not set
+  var di = document.getElementById('dateInput');
+  if (!di.value) di.value = todayStr();
+  onDateChange();
+}
+function closeLogSheet() {
+  document.getElementById('logSheet').className = 'log-sheet';
+  document.getElementById('sheetOverlay').className = 'sheet-overlay';
+}
+function openCyclesSheet() {
+  renderCyclesList();
+  var ncd = document.getElementById('newCycleDate');
+  if (!ncd.value) ncd.value = todayStr();
+  document.getElementById('sheetOverlay').className = 'sheet-overlay open';
+  document.getElementById('cyclesSheet').className = 'cycles-sheet open';
+}
+function closeCyclesSheet() {
+  document.getElementById('cyclesSheet').className = 'cycles-sheet';
+  document.getElementById('sheetOverlay').className = 'sheet-overlay';
+}
+function closeAllSheets() {
+  document.getElementById('logSheet').className = 'log-sheet';
+  document.getElementById('cyclesSheet').className = 'cycles-sheet';
+  document.getElementById('sheetOverlay').className = 'sheet-overlay';
+}
+
+// ─── CYCLE NAV ───────────────────────────────────────────────────────────────
+function prevCycle() { if(state.currentCycleIdx>0){state.currentCycleIdx--;render();} }
+function nextCycle() { if(state.currentCycleIdx<state.cycles.length-1){state.currentCycleIdx++;render();} }
+
+function startNewCycle() {
+  var input = document.getElementById('newCycleDate');
+  var startDate = (input && input.value) ? input.value : todayStr();
+  var newCycle = newCycleObj(startDate);
+  state.cycles.push(newCycle);
+  state.cycles.sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
+  for (var i=0;i<state.cycles.length;i++) { if(state.cycles[i].id===newCycle.id){state.currentCycleIdx=i;break;} }
+  saveState();
+  closeCyclesSheet();
+  var di = document.getElementById('dateInput');
+  di.value = startDate;
+  showToast('Cycle started');
+  render();
+}
+
+var pendingDeleteIdx = -1;
+
+function deleteCycleByIdx(idx) {
+  if (state.cycles.length <= 1) { showToast('Cannot delete your only cycle'); return; }
+  pendingDeleteIdx = idx;
+  var cycle = state.cycles[idx];
+  var msg = cycle.entries.length > 0
+    ? 'Delete Cycle '+(idx+1)+'? This will remove '+cycle.entries.length+' logged entries.'
+    : 'Delete Cycle '+(idx+1)+'? It has no entries.';
+  document.getElementById('deleteConfirmMsg').textContent = msg;
+  document.getElementById('deleteConfirm').style.display = 'block';
+}
+
+function confirmDelete() {
+  if (pendingDeleteIdx < 0) return;
+  state.cycles.splice(pendingDeleteIdx, 1);
+  if (state.currentCycleIdx >= state.cycles.length) state.currentCycleIdx = state.cycles.length - 1;
+  pendingDeleteIdx = -1;
+  saveState();
+  document.getElementById('deleteConfirm').style.display = 'none';
+  showToast('Cycle deleted');
+  closeCyclesSheet();
+  render();
+}
+
+function cancelDelete() {
+  pendingDeleteIdx = -1;
+  document.getElementById('deleteConfirm').style.display = 'none';
+}
+
+function deleteCurrentCycle() { deleteCycleByIdx(state.currentCycleIdx); }
+var editingStartDateIdx = -1;
+
+function editStartDate(idx) {
+  editingStartDateIdx = idx;
+  var input = document.getElementById('editStartDateInput');
+  input.value = state.cycles[idx].startDate;
+  document.getElementById('editStartDateWrap').style.display = 'block';
+}
+
+function saveEditStartDate() {
+  if (editingStartDateIdx < 0) return;
+  var input = document.getElementById('editStartDateInput');
+  var newDate = input.value;
+  if (!newDate) { showToast('Please select a date'); return; }
+  state.cycles[editingStartDateIdx].startDate = newDate;
+  // Re-sort cycles by start date
+  state.cycles.sort(function(a,b){ return a.startDate < b.startDate ? -1 : 1; });
+  // Find the edited cycle's new index
+  for (var i = 0; i < state.cycles.length; i++) {
+    if (state.cycles[i].startDate === newDate) { state.currentCycleIdx = i; break; }
+  }
+  editingStartDateIdx = -1;
+  saveState();
+  document.getElementById('editStartDateWrap').style.display = 'none';
+  showToast('Start date updated');
+  renderCyclesList();
+  render();
+}
+
+function cancelEditStartDate() {
+  editingStartDateIdx = -1;
+  document.getElementById('editStartDateWrap').style.display = 'none';
+}
+
+function selectCycle(idx) { state.currentCycleIdx = idx; closeCyclesSheet(); render(); }
+
+function renderCyclesList() {
+  var el = document.getElementById('cyclesList');
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">';
+  for (var i = state.cycles.length-1; i >= 0; i--) {
+    var cyc = state.cycles[i];
+    var ents = cyc.entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+    var tempsOnly = ents.filter(function(e){return e.temp !== null && e.temp !== undefined;});
+    var ovRes = findOvulation(tempsOnly);
+    var isActive = (i === state.currentCycleIdx);
+    var isCurrentCyc = (i === state.cycles.length - 1);
+    var color = CYCLE_PALETTE[i % CYCLE_PALETTE.length];
+    html += '<div onclick="selectCycle('+i+')" style="'
+      + 'background:'+(isActive?'rgba(201,169,110,0.08)':'var(--surface2)')+';'
+      + 'border:1px solid '+(isActive?'var(--gold)':'var(--border)')+';'
+      + 'border-radius:10px;padding:11px;cursor:pointer;position:relative;">';
+    // Delete button top right
+    if (state.cycles.length > 1) {
+      html += '<button onclick="event.stopPropagation();deleteCycleByIdx('+i+');" '
+        + 'style="position:absolute;top:6px;right:6px;background:none;border:none;'
+        + 'color:var(--text-muted);font-size:12px;cursor:pointer;padding:2px;">&#128465;</button>';
+    }
+    // Color dot + cycle number
+    html += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">';
+    html += '<div style="width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;"></div>';
+    html += '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:'+(isActive?'var(--gold)':'var(--text)')+';font-weight:500;">Cycle '+(i+1)+(isActive?' ·':'')+' '+(isActive?'<span style="color:var(--text-muted);font-size:10px;">now</span>':'')+'</div>';
+    html += '</div>';
+    // Start date with edit button
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span>Started '+formatDateShort(cyc.startDate)+'</span>';
+    html += '<button onclick="event.stopPropagation();editStartDate('+i+');" style="background:none;border:none;color:var(--text-muted);font-size:10px;font-family:\'DM Mono\',monospace;cursor:pointer;padding:0;text-decoration:underline;">edit</button>';
+    html += '</div>';
+    // Stats row
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+    html += '<span style="font-size:9px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 5px;color:var(--text-dim);">'+tempsOnly.length+' temps</span>';
+    if (ovRes) html += '<span style="font-size:9px;background:rgba(155,143,196,0.15);border:1px solid #9b8fc455;border-radius:4px;padding:2px 5px;color:#9b8fc4;">OV ✓</span>';
+    html += '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ─── LOG ENTRY ───────────────────────────────────────────────────────────────
+function getSelectedDate() {
+  var el = document.getElementById('dateInput');
+  return (el && el.value) ? el.value : todayStr();
+}
+function shiftDate(days) {
+  var di = document.getElementById('dateInput');
+  di.value = addDays(di.value || todayStr(), days);
+  onDateChange();
+}
+function onDateChange() {
+  var date = getSelectedDate();
+  document.getElementById('dateLabel').textContent = formatDate(date);
+  updateLoggedDisplay(date);
+  updateSymDisplay(date);
+  // Reset temp form
+  document.getElementById('tempInput').value = '';
+  document.getElementById('notesInput').value = '';
+  activeTags = {};
+  var tags = document.querySelectorAll('#logForm .tag');
+  for (var i = 0; i < tags.length; i++) tags[i].className = tags[i].className.replace(/ active/g,'');
+  // Pre-select existing symptom tags for this date
+  activeSymTags = {};
+  var symTags = document.querySelectorAll('.sym-tag, .mood-tag');
+  for (var s = 0; s < symTags.length; s++) symTags[s].className = symTags[s].className.replace(/ active/g,'');
+  var cycle = currentCycle();
+  for (var ei = 0; ei < cycle.entries.length; ei++) {
+    if (cycle.entries[ei].date === date && cycle.entries[ei].tags) {
+      var etags = cycle.entries[ei].tags;
+      for (var ti = 0; ti < etags.length; ti++) {
+        if (ALL_SYMPTOMS.indexOf(etags[ti]) >= 0) {
+          activeSymTags[etags[ti]] = true;
+          for (var s2 = 0; s2 < symTags.length; s2++) {
+            if (symTags[s2].getAttribute('data-tag') === etags[ti]) {
+              symTags[s2].className = symTags[s2].className + ' active';
+            }
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+function updateLoggedDisplay(date) {
+  var cycle = currentCycle(); var existing = null;
+  for (var i=0;i<cycle.entries.length;i++){if(cycle.entries[i].date===date){existing=cycle.entries[i];break;}}
+  var display = document.getElementById('loggedDisplay');
+  var form = document.getElementById('logForm');
+  if (existing && existing.temp !== null && existing.temp !== undefined) {
+    display.style.display = 'flex'; form.style.display = 'none';
+    document.getElementById('loggedTemp').textContent = existing.temp.toFixed(2)+'°F';
+    var cd = cycleDayNum(cycle, date);
+    var tags = existing.tags ? existing.tags.join(', ') : '';
+    var meta = 'CD'+cd; if(tags) meta+='<br>'+tags;
+    document.getElementById('loggedMeta').innerHTML = meta;
+  } else {
+    display.style.display = 'none'; form.style.display = 'block';
+  }
+}
+var activeSymTags = {};
+
+function toggleSymTag(el) {
+  var tag = el.getAttribute('data-tag');
+  if (activeSymTags[tag]) {
+    delete activeSymTags[tag];
+    el.className = el.className.replace(/ active/g,'');
+  } else {
+    activeSymTags[tag] = true;
+    el.className = el.className + ' active';
+  }
+  // Auto-save immediately
+  saveSymptoms();
+}
+
+function saveSymptoms() {
+  var date = getSelectedDate();
+  var cycle = currentCycle();
+  var existing = null;
+  for (var i = 0; i < cycle.entries.length; i++) { if (cycle.entries[i].date === date) { existing = cycle.entries[i]; break; } }
+  var newSymTags = [];
+  for (var k in activeSymTags) { if (activeSymTags.hasOwnProperty(k) && activeSymTags[k]) newSymTags.push(k); }
+  if (existing) {
+    var kept = [];
+    var etags = existing.tags || [];
+    for (var j = 0; j < etags.length; j++) {
+      if (ALL_SYMPTOMS.indexOf(etags[j]) < 0) kept.push(etags[j]);
+    }
+    existing.tags = kept.concat(newSymTags);
+  } else if (newSymTags.length > 0) {
+    cycle.entries.push({ date: date, temp: null, tags: newSymTags, notes: '' });
+    cycle.entries.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+  }
+  var newCycleStarted = checkAutoNewCycle(date, newSymTags);
+  if (newCycleStarted) showToast('New cycle started from ' + formatDateShort(date));
+  // If logging on a date before cycle start, pull it back
+  if (!newCycleStarted && date < currentCycle().startDate) {
+    currentCycle().startDate = date;
+  }
+  saveState();
+  updateSymDisplay(date);
+  render();
+}
+
+function updateSymDisplay(date) {
+  var el = document.getElementById('symLoggedDisplay');
+  var textEl = document.getElementById('symLoggedText');
+  if (!el || !textEl) return;
+  var cycle = currentCycle();
+  var existing = null;
+  for (var i = 0; i < cycle.entries.length; i++) { if (cycle.entries[i].date === date) { existing = cycle.entries[i]; break; } }
+  if (existing && existing.tags) {
+    var syms = [];
+    for (var j = 0; j < existing.tags.length; j++) {
+      if (ALL_SYMPTOMS.indexOf(existing.tags[j]) >= 0) syms.push(existing.tags[j]);
+    }
+    if (syms.length > 0) { el.style.display = 'block'; textEl.textContent = syms.join(', '); return; }
+  }
+  el.style.display = 'none';
+}
+
+function toggleTag(el) {
+  var tag = el.getAttribute('data-tag');
+  if (activeTags[tag]) { delete activeTags[tag]; el.className = el.className.replace(/ active/g,''); }
+  else { activeTags[tag] = true; el.className = el.className+' active'; }
+}
+
+function checkAutoNewCycle(date, tags) {
+  var hasPeriod = tags.indexOf('period') >= 0 || tags.indexOf('period light') >= 0 || tags.indexOf('period heavy') >= 0;
+  if (!hasPeriod) return false;
+  var cycle = currentCycle();
+  var daysSinceStart = cycleDayNum(cycle, date) - 1;
+  if (daysSinceStart < 15) return false;
+  if (cycle.startDate === date) return false;
+  for (var i = 0; i < state.cycles.length; i++) {
+    var diff = Math.abs(Math.round((new Date(state.cycles[i].startDate+'T12:00:00') - new Date(date+'T12:00:00'))/86400000));
+    if (diff < 3) return false;
+  }
+  var newCycle = newCycleObj(date);
+  state.cycles.push(newCycle);
+  state.cycles.sort(function(a,b){ return a.startDate < b.startDate ? -1 : 1; });
+  for (var j = 0; j < state.cycles.length; j++) {
+    if (state.cycles[j].id === newCycle.id) { state.currentCycleIdx = j; break; }
+  }
+  return true;
+}
+
+function logEntry() {
+  var tempRaw = document.getElementById('tempInput').value;
+  var temp = parseFloat(tempRaw);
+  if (!tempRaw || isNaN(temp) || temp < 95 || temp > 100) { showToast('Enter a valid temp 95–100'); return; }
+  var date = getSelectedDate(); var cycle = currentCycle();
+  // Check for existing temp entry (not symptom-only)
+  for (var i=0;i<cycle.entries.length;i++){
+    if(cycle.entries[i].date===date && cycle.entries[i].temp !== null && cycle.entries[i].temp !== undefined){
+      showToast('Already logged for this date'); return;
+    }
+  }
+  var tags = []; for (var k in activeTags){if(activeTags.hasOwnProperty(k)&&activeTags[k]) tags.push(k);}
+  var newCycleStarted = checkAutoNewCycle(date, tags);
+  var cur = currentCycle();
+
+  // If logging a date before cycle start, pull cycle start back automatically
+  if (date < cur.startDate) {
+    cur.startDate = date;
+  }
+
+  // Find existing symptom-only entry to merge into, or create new
+  var existing = null;
+  for (var ei=0;ei<cur.entries.length;ei++){if(cur.entries[ei].date===date){existing=cur.entries[ei];break;}}
+  if (existing) {
+    existing.temp = temp;
+    var existingTags = existing.tags || [];
+    for (var tj=0;tj<tags.length;tj++){if(existingTags.indexOf(tags[tj])<0) existingTags.push(tags[tj]);}
+    existing.tags = existingTags;
+    existing.notes = document.getElementById('notesInput').value || existing.notes;
+  } else {
+    cur.entries.push({ date:date, temp:temp, tags:tags, notes:document.getElementById('notesInput').value });
+    cur.entries.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
+  }
+  saveState();
+  document.getElementById('tempInput').value='';
+  document.getElementById('notesInput').value='';
+  activeTags={};
+  var tagEls=document.querySelectorAll('#logForm .tag');
+  for(var j=0;j<tagEls.length;j++) tagEls[j].className=tagEls[j].className.replace(/ active/g,'');
+  showToast(newCycleStarted ? 'New cycle started from '+formatDateShort(date) : 'Logged \u2713');
+  updateLoggedDisplay(date);
+  render();
+}
+
+function editFromDisplay() {
+  var date = getSelectedDate(); var cycle = currentCycle(); var entry = null;
+  for(var i=0;i<cycle.entries.length;i++){if(cycle.entries[i].date===date){entry=cycle.entries[i];break;}}
+  if(!entry) return;
+  document.getElementById('tempInput').value = entry.temp || '';
+  activeTags={};
+  var tagEls=document.querySelectorAll('#logForm .tag');
+  for(var j=0;j<tagEls.length;j++) tagEls[j].className=tagEls[j].className.replace(/ active/g,'');
+  if(entry.tags){for(var k=0;k<entry.tags.length;k++){activeTags[entry.tags[k]]=true;for(var j2=0;j2<tagEls.length;j2++){if(tagEls[j2].getAttribute('data-tag')===entry.tags[k]) tagEls[j2].className=tagEls[j2].className+' active';}}}
+  document.getElementById('notesInput').value = entry.notes||'';
+  // Remove temp from entry but keep symptoms
+  entry.temp = null;
+  saveState();
+  document.getElementById('loggedDisplay').style.display='none';
+  document.getElementById('logForm').style.display='block';
+}
+
+function deleteEntry(cycleIdx, date) {
+  var entries=state.cycles[cycleIdx].entries; var newEntries=[];
+  for(var i=0;i<entries.length;i++){if(entries[i].date!==date) newEntries.push(entries[i]);}
+  state.cycles[cycleIdx].entries=newEntries;
+  saveState();
+  render(); updateLoggedDisplay(getSelectedDate());
+}
+
+function editEntry(cycleIdx, date) {
+  var entry=null; var entries=state.cycles[cycleIdx].entries;
+  for(var i=0;i<entries.length;i++){if(entries[i].date===date){entry=entries[i];break;}}
+  if(!entry) return;
+  state.currentCycleIdx=cycleIdx;
+  var di=document.getElementById('dateInput'); di.value=date;
+  document.getElementById('dateLabel').textContent=formatDate(date);
+  document.getElementById('tempInput').value=entry.temp||'';
+  activeTags={};
+  var tagEls=document.querySelectorAll('#logForm .tag');
+  for(var j=0;j<tagEls.length;j++) tagEls[j].className=tagEls[j].className.replace(/ active/g,'');
+  if(entry.tags){for(var k=0;k<entry.tags.length;k++){activeTags[entry.tags[k]]=true;for(var j2=0;j2<tagEls.length;j2++){if(tagEls[j2].getAttribute('data-tag')===entry.tags[k]) tagEls[j2].className=tagEls[j2].className+' active';}}}
+  document.getElementById('notesInput').value=entry.notes||'';
+  entry.temp = null;
+  saveState();
+  document.getElementById('loggedDisplay').style.display='none';
+  document.getElementById('logForm').style.display='block';
+  openLogSheet(); render();
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  var t=document.getElementById('toast'); t.textContent=msg; t.className='toast show';
+  setTimeout(function(){t.className='toast';},2200);
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  var tabs=['cycle','overview','patterns'];
+  for(var i=0;i<tabs.length;i++){
+    var p=document.getElementById('panel'+tabs[i].charAt(0).toUpperCase()+tabs[i].slice(1));
+    if(p) p.style.display=(tabs[i]===tab)?'block':'none';
+    var b=document.getElementById('tab'+tabs[i].charAt(0).toUpperCase()+tabs[i].slice(1));
+    if(b) b.className=(tabs[i]===tab)?'tab-btn active':'tab-btn';
+  }
+  if(tab==='cycle'){drawChart(currentCycle());}
+  if(tab==='overview'){drawOverview();}
+  if(tab==='patterns'){renderPatterns();}
+}
+function toggleEntries() {
+  var body=document.getElementById('logBody'); var chevron=document.getElementById('entriesChevron');
+  var header=document.getElementById('entriesHeader');
+  if(!body||!chevron) return;
+  if(body.style.display==='none'){
+    body.style.display='block'; chevron.style.transform='rotate(180deg)';
+    header.className='entries-header open';
+  } else {
+    body.style.display='none'; chevron.style.transform='rotate(0deg)';
+    header.className='entries-header';
+  }
+}
+
+// ─── DRAW HELPERS ────────────────────────────────────────────────────────────
+function drawRoundRect(ctx,x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+// ─── MAIN CHART ──────────────────────────────────────────────────────────────
+function drawChart(cycle) {
+  var canvas=document.getElementById('bbtChart'); if(!canvas) return;
+  var dpr=window.devicePixelRatio||1;
+  var W=canvas.parentElement.clientWidth; if(W<=0) W=300;
+  var H=230; canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  var entries=[]; for(var si=0;si<cycle.entries.length;si++) entries.push(cycle.entries[si]);
+  entries.sort(function(a,b){return a.date<b.date?-1:1;});
+  var tempEntries=[]; for(var ti2=0;ti2<entries.length;ti2++){if(entries[ti2].temp!==null&&entries[ti2].temp!==undefined) tempEntries.push(entries[ti2]);}
+  var PAD={top:28,right:20,bottom:34,left:44};
+  var cw=W-PAD.left-PAD.right; var ch=H-PAD.top-PAD.bottom;
+  ctx.fillStyle='#15110e'; ctx.fillRect(0,0,W,H);
+  if(tempEntries.length===0){ctx.fillStyle='#4a3f36';ctx.font='12px serif';ctx.textAlign='center';ctx.fillText('Tap + Log to add your first temperature',W/2,H/2);return;}
+  var temps=[]; for(var ti=0;ti<tempEntries.length;ti++) temps.push(tempEntries[ti].temp);
+  var minT=Math.max(96,Math.min.apply(null,temps)-0.3); var maxT=Math.min(99.5,Math.max.apply(null,temps)+0.4);
+  if(COVER_LINE>maxT) maxT=COVER_LINE+0.2; if(COVER_LINE<minT) minT=COVER_LINE-0.2;
+  // Round min/max to nearest 0.2
+  minT=Math.floor(minT*5)/5; maxT=Math.ceil(maxT*5)/5;
+  var tRange=maxT-minT; if(tRange===0) tRange=1;
+  function tx(idx){if(tempEntries.length<=1) return PAD.left+cw/2; return PAD.left+(idx/(tempEntries.length-1))*cw;}
+  function ty(t){return PAD.top+ch-((t-minT)/tRange)*ch;}
+  var ovResult=findOvulation(tempEntries); var ovIdx=ovResult?ovResult.ovIdx:-1; var confirmIdxs=ovResult?ovResult.confirmIdxs:[];
+  var fw=getFertileWindow();
+
+  // Phase backgrounds + track phase regions for labeling
+  var phaseRegions=[]; // {phase, x1, x2}
+  var lastPhase=null; var regionStart=PAD.left;
+  for(var pi=0;pi<tempEntries.length;pi++){
+    var cd=cycleDayNum(cycle,tempEntries[pi].date);
+    var ovCD2=(ovIdx>=0)?cycleDayNum(cycle,tempEntries[ovIdx].date):null;
+    var phase=getPhase(cd,ovCD2);
+    var x1=(pi===0)?PAD.left:(tx(pi-1)+tx(pi))/2;
+    var x2=(pi===tempEntries.length-1)?PAD.left+cw:(tx(pi)+tx(pi+1))/2;
+    ctx.fillStyle=phaseColors[phase]+'18'; ctx.fillRect(x1,PAD.top,x2-x1,ch);
+    if(cd>=fw.start&&cd<=fw.end){ctx.fillStyle='rgba(122,171,138,0.10)';ctx.fillRect(x1,PAD.top,x2-x1,ch);}
+    // Track phase region boundaries
+    if(phase!==lastPhase){
+      if(lastPhase!==null) phaseRegions.push({phase:lastPhase,x1:regionStart,x2:x1});
+      regionStart=x1; lastPhase=phase;
+    }
+    if(pi===tempEntries.length-1) phaseRegions.push({phase:phase,x1:regionStart,x2:PAD.left+cw});
+  }
+
+  // Phase labels at top of chart
+  var phaseShortNames={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal'};
+  ctx.font='bold 8px sans-serif'; ctx.textBaseline='top';
+  for(var ri=0;ri<phaseRegions.length;ri++){
+    var reg=phaseRegions[ri];
+    var regionW=reg.x2-reg.x1;
+    var label=phaseShortNames[reg.phase]||'';
+    var labelW=ctx.measureText(label).width;
+    // Only show if region is wide enough
+    if(regionW>labelW+8){
+      ctx.fillStyle=phaseColors[reg.phase]+'cc';
+      ctx.textAlign='center';
+      ctx.fillText(label,(reg.x1+reg.x2)/2,PAD.top+3);
+    }
+  }
+  ctx.textBaseline='alphabetic';
+
+  // Grid lines — every 0.2°F only
+  ctx.strokeStyle='#2e2520'; ctx.lineWidth=0.5;
+  var gt=minT;
+  while(gt<=maxT+0.01){
+    var gy=ty(gt);
+    if(gy>=PAD.top&&gy<=PAD.top+ch){
+      ctx.beginPath();ctx.moveTo(PAD.left,gy);ctx.lineTo(PAD.left+cw,gy);ctx.stroke();
+      ctx.fillStyle='#6a5a50'; ctx.font='9px monospace'; ctx.textAlign='right';
+      ctx.fillText(gt.toFixed(1),PAD.left-4,gy+3);
+    }
+    gt=Math.round((gt+0.2)*10)/10;
+  }
+
+  // Cover line — dashed, no text labels
+  var cly=ty(COVER_LINE);
+  ctx.strokeStyle='#c9a96e88'; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(PAD.left,cly);ctx.lineTo(PAD.left+cw,cly);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Area
+  if(tempEntries.length>1){
+    ctx.beginPath(); ctx.moveTo(tx(0),PAD.top+ch); ctx.lineTo(tx(0),ty(tempEntries[0].temp));
+    for(var ai=1;ai<tempEntries.length;ai++) ctx.lineTo(tx(ai),ty(tempEntries[ai].temp));
+    ctx.lineTo(tx(tempEntries.length-1),PAD.top+ch); ctx.closePath();
+    var gAll=ctx.createLinearGradient(0,PAD.top,0,PAD.top+ch);
+    gAll.addColorStop(0,'#c9a96e22'); gAll.addColorStop(1,'#c9a96e04');
+    ctx.fillStyle=gAll; ctx.fill();
+  }
+  // Line
+  if(tempEntries.length>1){
+    ctx.beginPath(); ctx.moveTo(tx(0),ty(tempEntries[0].temp));
+    for(var li=1;li<tempEntries.length;li++) ctx.lineTo(tx(li),ty(tempEntries[li].temp));
+    ctx.strokeStyle='#c9a96e'; ctx.lineWidth=1.8; ctx.lineJoin='round'; ctx.stroke();
+  }
+  // Dots
+  for(var di=0;di<tempEntries.length;di++){
+    var ex=tx(di); var ey=ty(tempEntries[di].temp);
+    var etags=tempEntries[di].tags||[];
+    var isPeriod=false,isPeak=false,isDisturbed=false,isConfirm=false;
+    for(var tt=0;tt<etags.length;tt++){if(etags[tt]==='period'||etags[tt]==='period light'||etags[tt]==='period heavy') isPeriod=true;if(etags[tt]==='peak') isPeak=true;if(etags[tt]==='disturbed'||etags[tt]==='alcohol') isDisturbed=true;}
+    for(var cc=0;cc<confirmIdxs.length;cc++){if(confirmIdxs[cc]===di) isConfirm=true;}
+    var isOvDay=(di===ovIdx&&ovIdx>=0);
+    var fill,stroke,radius;
+    if(isOvDay){fill='#9b8fc4';stroke='#c9b8e8';radius=5.5;}
+    else if(isConfirm){fill='rgba(155,143,196,0.25)';stroke='#9b8fc4';radius=4.5;}
+    else if(isDisturbed){fill='#4a3f36';stroke='#4a3f36';radius=4;}
+    else if(isPeriod){fill='#d4877a';stroke='#d4877a';radius=4.5;}
+    else if(isPeak){fill='#9b8fc4';stroke='#9b8fc4';radius=4.5;}
+    else{fill='#15110e';stroke='#c9a96e';radius=4.5;}
+    ctx.beginPath();ctx.arc(ex,ey,radius,0,Math.PI*2);ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=isOvDay?2:1.5;ctx.fill();ctx.stroke();
+    // Symptom dot below x axis
+    var hasSym=false; for(var ss=0;ss<ALL_SYMPTOMS.length;ss++){if(etags.indexOf(ALL_SYMPTOMS[ss])>=0){hasSym=true;break;}}
+    if(hasSym){ctx.beginPath();ctx.arc(ex,PAD.top+ch+22,2.5,0,Math.PI*2);ctx.fillStyle='#7aabc9';ctx.fill();}
+  }
+  // OV marker pill
+  if(ovIdx>=0){
+    var ox=tx(ovIdx); ctx.strokeStyle='#9b8fc466'; ctx.lineWidth=1.5; ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(ox,PAD.top+18);ctx.lineTo(ox,PAD.top+ch);ctx.stroke();ctx.setLineDash([]);
+    ctx.font='bold 9px monospace'; var lw=ctx.measureText('OV').width+10; var lh=14;
+    ctx.fillStyle='#9b8fc4'; drawRoundRect(ctx,ox-lw/2,PAD.top,lw,lh,3); ctx.fill();
+    ctx.fillStyle='#0d0a08'; ctx.textAlign='center'; ctx.fillText('OV',ox,PAD.top+lh-3);
+  }
+  // X axis CD labels
+  ctx.fillStyle='#4a3f36'; ctx.font='9px monospace'; ctx.textAlign='center';
+  for(var xi=0;xi<tempEntries.length;xi++){
+    if(tempEntries.length<=15||xi%Math.ceil(tempEntries.length/15)===0)
+      ctx.fillText('CD'+cycleDayNum(cycle,tempEntries[xi].date),tx(xi),PAD.top+ch+14);
+  }
+}
+
+// ─── STACKED MINI CHARTS ─────────────────────────────────────────────────────
+var CYCLE_PALETTE=['#c9a96e','#9b8fc4','#7aab8a','#d4877a','#7aabc9','#d4a76a'];
+
+function drawOverview() {
+  var container = document.getElementById('miniChartsContainer');
+  if (!container) return;
+
+  var validCycles = [];
+  for (var i = 0; i < state.cycles.length; i++) {
+    var ents = state.cycles[i].entries.filter(function(e){ return e.temp !== null && e.temp !== undefined; });
+    if (ents.length > 0) validCycles.push({ cycle: state.cycles[i], idx: i, ents: ents.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; }) });
+  }
+
+  if (validCycles.length === 0) {
+    container.innerHTML = '<div class="empty-state">No cycle data yet.</div>';
+    return;
+  }
+
+  // Global temp range across all cycles so all charts share same Y scale
+  var allTemps = [];
+  for (var vi = 0; vi < validCycles.length; vi++) {
+    for (var vei = 0; vei < validCycles[vi].ents.length; vei++) allTemps.push(validCycles[vi].ents[vei].temp);
+  }
+  var globalMin = Math.max(96, Math.min.apply(null, allTemps) - 0.2);
+  var globalMax = Math.min(99.5, Math.max.apply(null, allTemps) + 0.3);
+  if (COVER_LINE > globalMax) globalMax = COVER_LINE + 0.15;
+  if (COVER_LINE < globalMin) globalMin = COVER_LINE - 0.15;
+
+  // Build HTML — one canvas per cycle, stacked
+  var html = '<div style="font-size:10px;color:var(--text-muted);padding:0 4px 10px;line-height:1.6;">All cycles on the same temperature scale — compare the thermal shift, ovulation jump and luteal steadiness at a glance.</div>';
+
+  // newest first
+  for (var ci = validCycles.length - 1; ci >= 0; ci--) {
+    var vc = validCycles[ci];
+    var ovRes = findOvulation(vc.ents);
+    var color = CYCLE_PALETTE[vc.idx % CYCLE_PALETTE.length];
+    var isCurrent = (vc.idx === state.cycles.length - 1);
+
+    // Stats line
+    var ovStr = ovRes ? 'OV CD'+(ovRes.ovIdx+1) : 'OV not confirmed';
+    var luteal = ovRes ? (vc.ents.length - (ovRes.ovIdx+1))+'d luteal' : '';
+    var temps = vc.ents.map ? vc.ents.map(function(e){return e.temp;}) : [];
+    // iOS safe map
+    var tempsArr = []; for(var ti=0;ti<vc.ents.length;ti++) tempsArr.push(vc.ents[ti].temp);
+    var lo = Math.min.apply(null, tempsArr).toFixed(2);
+    var hi = Math.max.apply(null, tempsArr).toFixed(2);
+
+    html += '<div style="margin-bottom:16px;">';
+    // Header row
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding:0 2px;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;">';
+    html += '<div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0;"></div>';
+    html += '<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:'+color+';">Cycle '+(vc.idx+1)+'</span>';
+    if (isCurrent) html += '<span style="font-size:9px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;">current</span>';
+    html += '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">'+formatDateShort(vc.cycle.startDate)+' &nbsp;·&nbsp; '+vc.ents.length+' days &nbsp;·&nbsp; '+ovStr+(luteal?' &nbsp;·&nbsp; '+luteal:'')+'</div>';
+    html += '</div>';
+    // Canvas
+    html += '<canvas id="miniChart_'+vc.idx+'" height="90" style="display:block;width:100%;border-radius:8px;background:#15110e;"></canvas>';
+    html += '</div>';
+  }
+
+  // ── Trends ──
+  var cycleLens = [];
+  var lutealLens = [];
+  for (var ti2 = 0; ti2 < validCycles.length; ti2++) {
+    var tc = validCycles[ti2];
+    // Cycle length = days between this start and next start
+    if (ti2 < validCycles.length - 1) {
+      var nextStart = validCycles[ti2+1].cycle.startDate;
+      var thisStart = tc.cycle.startDate;
+      var clen = Math.round((new Date(nextStart+'T12:00:00') - new Date(thisStart+'T12:00:00')) / 86400000);
+      if (clen > 15 && clen < 50) cycleLens.push(clen);
+    }
+    var tovRes = findOvulation(tc.ents);
+    if (tovRes) lutealLens.push(tc.ents.length - (tovRes.ovIdx + 1));
+  }
+
+  function trendLabel(arr) {
+    if (arr.length < 2) return null;
+    var first = arr[0]; var last = arr[arr.length-1];
+    var diff = last - first;
+    if (Math.abs(diff) <= 1) return 'stable';
+    return diff > 0 ? 'getting longer' : 'getting shorter';
+  }
+  function avg(arr) {
+    if (arr.length === 0) return null;
+    var s = 0; for (var i = 0; i < arr.length; i++) s += arr[i];
+    return Math.round(s / arr.length);
+  }
+
+  var hasTrends = cycleLens.length >= 2 || lutealLens.length >= 2;
+  if (hasTrends) {
+    html += '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:14px;margin-bottom:4px;">';
+    html += '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Trends</div>';
+
+    if (cycleLens.length >= 2) {
+      var cAvg = avg(cycleLens);
+      var cTrend = trendLabel(cycleLens);
+      var cColor = cTrend === 'stable' ? 'var(--sage)' : 'var(--amber)';
+      html += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">';
+      html += '<div style="width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:4px;"></div>';
+      html += '<div><div style="font-size:12px;color:var(--text);margin-bottom:2px;">Cycle length</div>';
+      html += '<div style="font-size:11px;color:var(--text-dim);">Averaging <span style="color:var(--gold);font-family:\'DM Mono\',monospace;">'+cAvg+' days</span> — <span style="color:'+cColor+';">'+cTrend+'</span> across your last '+cycleLens.length+' cycles.</div></div></div>';
+    }
+
+    if (lutealLens.length >= 2) {
+      var lAvg = avg(lutealLens);
+      var lTrend = trendLabel(lutealLens);
+      var lColor = lTrend === 'stable' ? 'var(--sage)' : (lTrend === 'getting shorter' ? 'var(--rose)' : 'var(--amber)');
+      var lNote = lAvg < 10 ? ' A luteal phase under 10 days can be worth discussing with your doctor.' : (lAvg >= 12 ? ' A healthy luteal phase is typically 12–16 days.' : '');
+      html += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">';
+      html += '<div style="width:6px;height:6px;border-radius:50%;background:#7aab8a;flex-shrink:0;margin-top:4px;"></div>';
+      html += '<div><div style="font-size:12px;color:var(--text);margin-bottom:2px;">Luteal phase</div>';
+      html += '<div style="font-size:11px;color:var(--text-dim);">Averaging <span style="color:#7aab8a;font-family:\'DM Mono\',monospace;">'+lAvg+' days</span> — <span style="color:'+lColor+';">'+lTrend+'</span>.'+lNote+'</div></div></div>';
+    }
+
+    html += '</div>';
+  }
+
+  // Summary table
+  html += '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:14px;">';
+  html += '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Summary</div>';
+  html += '<table class="log-table"><thead><tr><th></th><th>Start</th><th>Temps</th><th>OV</th><th>Luteal</th><th>Low / High</th></tr></thead><tbody>';
+  for (var si = validCycles.length-1; si >= 0; si--) {
+    var sv = validCycles[si];
+    var sovRes = findOvulation(sv.ents);
+    var sovStr = sovRes ? 'CD'+(sovRes.ovIdx+1) : '—';
+    var sluteal = sovRes ? (sv.ents.length-(sovRes.ovIdx+1))+'d' : '—';
+    var stemps = []; for(var sti=0;sti<sv.ents.length;sti++) stemps.push(sv.ents[sti].temp);
+    var slo = Math.min.apply(null,stemps).toFixed(2); var shi = Math.max.apply(null,stemps).toFixed(2);
+    var scolor = CYCLE_PALETTE[sv.idx%CYCLE_PALETTE.length];
+    var sisCurrent = (sv.idx===state.cycles.length-1);
+    html += '<tr style="'+(sisCurrent?'background:rgba(201,169,110,0.04)':'')+'">';
+    html += '<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+scolor+';margin-right:4px;vertical-align:middle;"></span><span style="font-family:monospace;font-size:11px;color:'+(sisCurrent?'var(--gold)':'var(--text-dim)')+'">C'+(sv.idx+1)+'</span></td>';
+    html += '<td style="font-size:11px;">'+formatDateShort(sv.cycle.startDate)+'</td>';
+    html += '<td style="font-family:monospace;color:var(--gold);font-size:11px;">'+sv.ents.length+'</td>';
+    html += '<td style="font-family:monospace;color:#9b8fc4;font-size:11px;">'+sovStr+'</td>';
+    html += '<td style="font-family:monospace;color:#7aab8a;font-size:11px;">'+sluteal+'</td>';
+    html += '<td style="font-family:monospace;font-size:10px;color:var(--text-muted);">'+slo+' / '+shi+'</td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  container.innerHTML = html;
+
+  // Now draw each mini canvas
+  for (var di = validCycles.length-1; di >= 0; di--) {
+    drawMiniChart(validCycles[di], globalMin, globalMax);
+  }
+}
+
+function drawMiniChart(vc, globalMin, globalMax) {
+  var canvas = document.getElementById('miniChart_'+vc.idx);
+  if (!canvas) return;
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.parentElement.clientWidth; if (W <= 0) W = 300;
+  var H = 90;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  var PAD = { top: 8, right: 16, bottom: 18, left: 36 };
+  var cw = W - PAD.left - PAD.right; var ch = H - PAD.top - PAD.bottom;
+  var tRange = globalMax - globalMin; if (tRange === 0) tRange = 1;
+  var color = CYCLE_PALETTE[vc.idx % CYCLE_PALETTE.length];
+
+  ctx.fillStyle = '#15110e'; ctx.fillRect(0, 0, W, H);
+
+  var ents = vc.ents;
+  if (ents.length === 0) return;
+
+  function tx(i) { if (ents.length <= 1) return PAD.left + cw/2; return PAD.left + (i/(ents.length-1))*cw; }
+  function ty(t) { return PAD.top + ch - ((t - globalMin)/tRange)*ch; }
+
+  var ovRes = findOvulation(ents);
+  var ovIdx = ovRes ? ovRes.ovIdx : -1;
+  var confirmIdxs = ovRes ? ovRes.confirmIdxs : [];
+
+  // Phase backgrounds
+  for (var pi = 0; pi < ents.length; pi++) {
+    var cd = cycleDayNum(vc.cycle, ents[pi].date);
+    var ovCD = (ovIdx >= 0) ? cycleDayNum(vc.cycle, ents[ovIdx].date) : null;
+    var phase = getPhase(cd, ovCD);
+    var x1 = (pi===0) ? PAD.left : (tx(pi-1)+tx(pi))/2;
+    var x2 = (pi===ents.length-1) ? PAD.left+cw : (tx(pi)+tx(pi+1))/2;
+    ctx.fillStyle = phaseColors[phase] + '18'; ctx.fillRect(x1, PAD.top, x2-x1, ch);
+  }
+
+  // Cover line
+  var cly = ty(COVER_LINE);
+  if (cly >= PAD.top && cly <= PAD.top+ch) {
+    ctx.strokeStyle = color + '44'; ctx.lineWidth = 0.8; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(PAD.left, cly); ctx.lineTo(PAD.left+cw, cly); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Y axis labels (just min, cover line, max)
+  ctx.fillStyle = '#4a3f36'; ctx.font = '7px monospace'; ctx.textAlign = 'right';
+  ctx.fillText(globalMin.toFixed(1), PAD.left-3, PAD.top+ch+1);
+  ctx.fillText(globalMax.toFixed(1), PAD.left-3, PAD.top+5);
+
+  // Area fill
+  if (ents.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(tx(0), PAD.top+ch); ctx.lineTo(tx(0), ty(ents[0].temp));
+    for (var ai = 1; ai < ents.length; ai++) ctx.lineTo(tx(ai), ty(ents[ai].temp));
+    ctx.lineTo(tx(ents.length-1), PAD.top+ch); ctx.closePath();
+    var grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top+ch);
+    grad.addColorStop(0, color+'28'); grad.addColorStop(1, color+'04');
+    ctx.fillStyle = grad; ctx.fill();
+  }
+
+  // Line
+  if (ents.length > 1) {
+    ctx.beginPath(); ctx.moveTo(tx(0), ty(ents[0].temp));
+    for (var li = 1; li < ents.length; li++) ctx.lineTo(tx(li), ty(ents[li].temp));
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+  }
+
+  // Dots
+  for (var di = 0; di < ents.length; di++) {
+    var isOv = (di === ovIdx && ovIdx >= 0);
+    var isConf = false; for(var cc=0;cc<confirmIdxs.length;cc++){if(confirmIdxs[cc]===di) isConf=true;}
+    var r = isOv ? 4 : 2.5;
+    ctx.beginPath(); ctx.arc(tx(di), ty(ents[di].temp), r, 0, Math.PI*2);
+    ctx.fillStyle = isOv ? '#9b8fc4' : (isConf ? 'rgba(155,143,196,0.4)' : color);
+    ctx.strokeStyle = isOv ? '#c9b8e8' : color;
+    ctx.lineWidth = isOv ? 1.5 : 0.5;
+    ctx.fill(); ctx.stroke();
+  }
+
+  // OV marker line
+  if (ovIdx >= 0) {
+    var ox = tx(ovIdx);
+    ctx.strokeStyle = '#9b8fc466'; ctx.lineWidth = 1; ctx.setLineDash([2,2]);
+    ctx.beginPath(); ctx.moveTo(ox, PAD.top); ctx.lineTo(ox, PAD.top+ch); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#9b8fc4'; ctx.font = 'bold 7px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('OV', ox, PAD.top+7);
+  }
+
+  // X axis: just first and last CD
+  ctx.fillStyle = '#4a3f36'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('CD1', tx(0), PAD.top+ch+12);
+  if (ents.length > 1) ctx.fillText('CD'+ents.length, tx(ents.length-1), PAD.top+ch+12);
+}
+// ─── PATTERNS ────────────────────────────────────────────────────────────────
+function cdToPhaseLabel(cd, ovCD) {
+  if(cd<=2) return 'Early menstrual'; if(cd<=5) return 'Menstrual';
+  if(!ovCD) ovCD=14;
+  if(cd<ovCD-2) return 'Follicular'; if(cd<ovCD) return 'Late follicular';
+  if(cd===ovCD) return 'Ovulation';
+  if(cd<=ovCD+3) return 'Early luteal'; if(cd<=ovCD+8) return 'Mid luteal';
+  return 'Late luteal';
+}
+var phaseOrder=['Early menstrual','Menstrual','Follicular','Late follicular','Ovulation','Early luteal','Mid luteal','Late luteal'];
+var phaseColorMap={'Early menstrual':'#d4877a','Menstrual':'#d4877a','Follicular':'#d4a76a','Late follicular':'#d4a76a','Ovulation':'#9b8fc4','Early luteal':'#7aab8a','Mid luteal':'#7aab8a','Late luteal':'#7aab8a'};
+
+// Symptoms that are definitionally expected in a given phase — skip these
+var OBVIOUS_COMBOS = {
+  'period':         ['early menstrual','menstrual'],
+  'period light':   ['early menstrual','menstrual'],
+  'period heavy':   ['early menstrual','menstrual'],
+  'spotting':       ['early menstrual','menstrual'],
+  'mittelschmerz':  ['ovulation','late follicular'],
+  'egg white cm':   ['ovulation','late follicular'],
+  'increased libido': ['ovulation','late follicular'],
+  'light spotting': ['ovulation'],
+  'pms':            ['late luteal','mid luteal']
+};
+
+// Symptom groups for display
+var SYMPTOM_GROUPS = {
+  'Digestive':   ['bloating','gas','nausea','constipation','diarrhea','appetite changes'],
+  'Pain':        ['cramps','pelvic pain','back pain','joint pain','headache'],
+  'Energy':      ['fatigue','insomnia','brain fog'],
+  'Histamine':   ['itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','palpitations','lightheadedness'],
+  'Mood':        ['anxious','irritable','low mood','energetic','calm'],
+  'Skin':        ['acne','flushing'],
+  'Cycle':       ['breast tenderness','breast sensitivity','spotting mid cycle']
+};
+
+function isObvious(sym, topPhase) {
+  if (!OBVIOUS_COMBOS.hasOwnProperty(sym)) return false;
+  var expected = OBVIOUS_COMBOS[sym];
+  for (var i = 0; i < expected.length; i++) {
+    if (expected[i] === topPhase.toLowerCase()) return true;
+  }
+  return false;
+}
+
+function getGroupName(sym) {
+  for (var g in SYMPTOM_GROUPS) {
+    if (!SYMPTOM_GROUPS.hasOwnProperty(g)) continue;
+    var arr = SYMPTOM_GROUPS[g];
+    for (var i = 0; i < arr.length; i++) { if (arr[i] === sym) return g; }
+  }
+  return 'Other';
+}
+
+var HISTAMINE_SYMPTOMS = ['itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','palpitations','lightheadedness'];
+var HIGH_ESTROGEN_PHASES = ['ovulation','late follicular','follicular'];
+
+function isHistamineSym(sym) {
+  for (var i = 0; i < HISTAMINE_SYMPTOMS.length; i++) { if (HISTAMINE_SYMPTOMS[i] === sym) return true; }
+  return false;
+}
+function isHighEstrogenPhase(phase) {
+  for (var i = 0; i < HIGH_ESTROGEN_PHASES.length; i++) { if (HIGH_ESTROGEN_PHASES[i] === phase.toLowerCase()) return true; }
+  return false;
+}
+
+function patternSentence(sym, topPhase, topCount, totalCycles, isSpread) {
+  var name = sym.charAt(0).toUpperCase() + sym.slice(1);
+  var phase = topPhase.toLowerCase();
+
+  // Histamine + high estrogen phase = specific insight
+  if (isHistamineSym(sym) && isHighEstrogenPhase(topPhase) && topCount >= 2) {
+    var base = name + ' appears around ' + phase + ' phase';
+    if (topCount >= totalCycles && totalCycles >= 2) base += ' every cycle';
+    return base + ' — estrogen stimulates histamine release, so symptoms peaking here may be hormonally driven rather than environmental.';
+  }
+
+  if (isSpread) {
+    return name + ' appears throughout your cycle with no clear phase pattern — may not be hormonally driven.';
+  }
+  if (topCount >= totalCycles && totalCycles >= 2) {
+    return name + ' has appeared in the ' + phase + ' phase every cycle so far — likely hormonal.';
+  }
+  if (topCount >= 3) {
+    return name + ' consistently appears in the ' + phase + ' phase (' + topCount + ' times across ' + totalCycles + ' cycles).';
+  }
+  return name + ' appeared in the ' + phase + ' phase in both cycles — watch for it again next cycle.';
+}
+
+function renderPatterns(){
+  var body = document.getElementById('patternsBody');
+  var totalCycles = state.cycles.length;
+
+  // Collect per-symptom data: which phase it appeared in, and which cycle indices
+  var symData = {};
+  for (var si = 0; si < ALL_SYMPTOMS.length; si++) {
+    symData[ALL_SYMPTOMS[si]] = { phases: [], cycleSet: {} };
+  }
+
+  for (var ci = 0; ci < state.cycles.length; ci++) {
+    var cycle = state.cycles[ci];
+    var ents = cycle.entries.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+    var ovRes = findOvulation(ents);
+    var cycleOvCD = ovRes ? (ovRes.ovIdx+1) : null;
+    for (var ei = 0; ei < ents.length; ei++) {
+      var tags = ents[ei].tags || [];
+      var cd = cycleDayNum(cycle, ents[ei].date);
+      var pl = cdToPhaseLabel(cd, cycleOvCD);
+      for (var ti = 0; ti < tags.length; ti++) {
+        if (symData.hasOwnProperty(tags[ti])) {
+          symData[tags[ti]].phases.push({phase: pl, cycleIdx: ci});
+          symData[tags[ti]].cycleSet[ci] = pl; // last phase seen in this cycle
+        }
+      }
+    }
+  }
+
+  // Build phase → symptom map with cycle tracking
+  var phaseSymptoms = {};
+  for (var sym in symData) {
+    if (!symData.hasOwnProperty(sym)) continue;
+    var data = symData[sym];
+    if (data.phases.length === 0) continue;
+
+    var cycleCount = 0;
+    for (var ck in data.cycleSet) { if (data.cycleSet.hasOwnProperty(ck)) cycleCount++; }
+    if (cycleCount === 0) continue;
+
+    // Find dominant phase
+    var phaseCounts = {};
+    for (var pi2 = 0; pi2 < data.phases.length; pi2++) {
+      var ph = data.phases[pi2].phase;
+      phaseCounts[ph] = (phaseCounts[ph] || 0) + 1;
+    }
+    var topPhase = ''; var topCount = 0;
+    for (var pk in phaseCounts) {
+      if (phaseCounts.hasOwnProperty(pk) && phaseCounts[pk] > topCount) { topCount = phaseCounts[pk]; topPhase = pk; }
+    }
+
+    if (isObvious(sym, topPhase)) continue;
+    if (cycleCount < 2 && data.phases.length < 2) continue;
+
+    if (!phaseSymptoms[topPhase]) phaseSymptoms[topPhase] = [];
+    phaseSymptoms[topPhase].push({ sym: sym, cycleCount: cycleCount, topCount: topCount, cycleSet: data.cycleSet });
+  }
+
+  var hasData = false;
+  for (var ph2 in phaseSymptoms) { if (phaseSymptoms.hasOwnProperty(ph2) && phaseSymptoms[ph2].length > 0) { hasData = true; break; } }
+
+  if (!hasData) {
+    body.innerHTML = '<div class="empty-state">Keep logging symptoms — patterns will appear here once they repeat across cycles.</div>';
+    return;
+  }
+
+  // Merge into 4 phase groups
+  var merged = {
+    'Menstrual phase': { phases: ['Early menstrual','Menstrual'], emoji: '🌑', color: '#d4877a', syms: [] },
+    'Follicular phase': { phases: ['Follicular','Late follicular'], emoji: '🌱', color: '#d4a76a', syms: [] },
+    'Ovulation': { phases: ['Ovulation'], emoji: '🌕', color: '#9b8fc4', syms: [] },
+    'Luteal phase': { phases: ['Early luteal','Mid luteal','Late luteal'], emoji: '🍂', color: '#7aab8a', syms: [] }
+  };
+
+  for (var mkey in merged) {
+    if (!merged.hasOwnProperty(mkey)) continue;
+    var mphases = merged[mkey].phases;
+    var seen = {};
+    for (var mpi = 0; mpi < mphases.length; mpi++) {
+      var mphase = mphases[mpi];
+      if (!phaseSymptoms[mphase]) continue;
+      for (var msi = 0; msi < phaseSymptoms[mphase].length; msi++) {
+        var ms = phaseSymptoms[mphase][msi];
+        if (!seen[ms.sym]) { seen[ms.sym] = true; merged[mkey].syms.push(ms); }
+      }
+    }
+    merged[mkey].syms.sort(function(a,b){ return b.cycleCount - a.cycleCount; });
+  }
+
+  var html = '<div style="padding:12px 16px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);">';
+  html += 'Based on <strong style="color:var(--text)">' + totalCycles + ' cycle' + (totalCycles !== 1 ? 's' : '') + '</strong>.';
+  if (totalCycles < 3) html += ' More cycles = more reliable patterns.';
+  html += '</div>';
+
+  var phaseOrder2 = ['Menstrual phase','Follicular phase','Ovulation','Luteal phase'];
+  for (var poi = 0; poi < phaseOrder2.length; poi++) {
+    var pk3 = phaseOrder2[poi];
+    var mp = merged[pk3];
+    if (mp.syms.length === 0) continue;
+    var color = mp.color;
+
+    html += '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">';
+    // Phase header
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">';
+    html += '<span style="font-size:16px;">' + mp.emoji + '</span>';
+    html += '<span style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.08em;color:' + color + ';">' + pk3.toUpperCase() + '</span>';
+    html += '</div>';
+
+    // Each symptom with cycle dots
+    for (var symi = 0; symi < mp.syms.length; symi++) {
+      var s = mp.syms[symi];
+      var name = s.sym.charAt(0).toUpperCase() + s.sym.slice(1);
+      var everyC = (s.cycleCount >= totalCycles && totalCycles >= 2);
+
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--surface2);">';
+      // Symptom name + sentence
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-size:12px;color:var(--text);margin-bottom:2px;">' + name + '</div>';
+      // Histamine insight if applicable
+      var sentence = '';
+      if (isHistamineSym(s.sym) && isHighEstrogenPhase(pk3)) {
+        sentence = 'May be estrogen-driven.';
+      } else if (everyC) {
+        sentence = 'Every cycle.';
+      } else {
+        sentence = s.cycleCount + ' of ' + totalCycles + ' cycles.';
+      }
+      html += '<div style="font-size:10px;color:var(--text-muted);">' + sentence + '</div>';
+      html += '</div>';
+
+      // Cycle dots — one per cycle
+      html += '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:10px;">';
+      for (var cdi = 0; cdi < state.cycles.length; cdi++) {
+        var present = s.cycleSet.hasOwnProperty(cdi);
+        var dotColor = present ? color : 'var(--border)';
+        html += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">';
+        html += '<div style="width:8px;height:8px;border-radius:50%;background:' + dotColor + ';"></div>';
+        html += '<div style="font-family:\'DM Mono\',monospace;font-size:7px;color:var(--text-muted);">C'+(cdi+1)+'</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+// ─── DAILY CARD ──────────────────────────────────────────────────────────────
+function getDailyContent(cd, phase) {
+  if(phase==='menstrual'){
+    if(cd===1) return {insight:"Day 1 — your period has arrived and estrogen is at its lowest. The reset has begun. It's normal to feel low-energy or need more rest today.",tip:"Heat is your best friend right now. A warm drink, heating pad, or hot shower can ease cramps more than most people realize."};
+    if(cd===2) return {insight:"Prostaglandins — the compounds that cause cramps — tend to peak on day 2. Your pain threshold is genuinely lower today, that's biology not sensitivity.",tip:"Anti-inflammatory foods like ginger, turmeric, and dark leafy greens can help. If cramps are severe, worth mentioning to your doctor."};
+    if(cd===3) return {insight:"Flow is usually heaviest around now but will start tapering. Your body is doing real work — energy expenditure actually increases slightly during menstruation.",tip:"Iron-rich foods help here: red meat, lentils, spinach, or dark chocolate. Pairing them with vitamin C helps absorption."};
+    if(cd===4) return {insight:"Estrogen is beginning to tick upward. You might notice a subtle lift in mood or energy compared to days 1-2 — that's the shift starting.",tip:"Light movement today — even a 20-minute walk — can genuinely reduce residual cramping by improving blood flow."};
+    return {insight:"You're near the end of your period. Estrogen is rising steadily and the fog of the early menstrual phase is beginning to lift.",tip:"Great day to ease back into your normal routine. Your body is ready to start building energy again."};
+  }
+  if(phase==='follicular'){
+    if(cd<=7) return {insight:"Estrogen is climbing and a new follicle is growing. Energy, mood and motivation tend to rise with it — you may feel unusually capable and clear-headed.",tip:"Lean into the momentum. Great time to start something new, have a hard conversation, or push yourself at the gym."};
+    if(cd<=9) return {insight:"Rising estrogen boosts serotonin and dopamine receptors — which is why the follicular phase often feels optimistic and social. This isn't a coincidence.",tip:"Schedule things you've been putting off. Your confidence and social energy are genuinely higher right now."};
+    if(cd<=11) return {insight:"Muscle recovery is faster and more efficient right now — estrogen has an anti-inflammatory effect that helps you bounce back after hard workouts.",tip:"Great week to increase workout intensity or try something physically challenging. Your body will handle it better than usual."};
+    if(cd<=13) return {insight:"Estrogen is near its peak. Cognitive flexibility and verbal fluency are at their highest — your brain is literally running differently than it was last week.",tip:"Ideal for presentations, creative work, networking, or any situation needing quick thinking and communication."};
+    return {insight:"You're approaching the most energetic point of your cycle. Estrogen and testosterone are both rising, and your drive and focus reflect it.",tip:"Pay attention to cervical mucus becoming clearer and more stretchy — that's a sign ovulation is close."};
+  }
+  if(phase==='ovulation'){
+    if(cd<=15) return {insight:"Ovulation is happening or just occurred. Estrogen and testosterone are both peaking — this is your body's highest-energy moment of the entire cycle.",tip:"You may notice a one-sided twinge in your lower abdomen — that's mittelschmerz, completely normal, and a helpful confirmation of ovulation."};
+    return {insight:"Your 3 temps above the cover line have confirmed ovulation. The luteal phase begins now as progesterone starts rising to take over.",tip:"Watch for your BBT to stay consistently elevated — a sustained rise above 97.95 confirms a healthy luteal phase."};
+  }
+  if(phase==='luteal'){
+    if(cd<=18) return {insight:"Progesterone is rising steadily. You might feel calmer and slightly more inward — that's this hormone's natural effect, sometimes called the nesting phase.",tip:"Your metabolism speeds up slightly in the luteal phase — you burn a few extra calories at rest. Don't ignore hunger signals."};
+    if(cd<=21) return {insight:"Progesterone peaks in the mid-luteal phase. Sleep may feel more important, digestion can slow, and bloating is common — all normal hormonal effects.",tip:"Magnesium-rich foods like dark chocolate, almonds and leafy greens can genuinely ease bloating and improve mood this week."};
+    if(cd<=24) return {insight:"You're in the second half of your luteal phase. Energy tends to dip and emotional sensitivity can rise — your body is doing hormonal heavy lifting.",tip:"Prioritize sleep this week. Reducing caffeine and alcohol also makes a real difference to how you feel in these final cycle days."};
+    if(cd<=27) return {insight:"Late luteal phase. Hormones are beginning to shift as your cycle prepares to reset. It's normal to feel more tired or emotionally tender right now.",tip:"Be patient with yourself. Feelings may feel bigger than usual — that's hormonal, not permanent. Your period and a fresh cycle are close."};
+    return {insight:"You're in the final days of your cycle. A drop in your BBT after sustained high temps is often the first sign your period is arriving in the next day or two.",tip:"Watch your chart — a temp dip below the cover line is your body's preview that a new cycle is starting soon."};
+  }
+  return {insight:"Keep logging your temperature each morning for personalized insights.",tip:"Consistency is everything with BBT — try to measure at the same time each day after at least 3 hours of sleep."};
+}
+
+function renderDailyCard(cd, phase, personalInsight) {
+  var card=document.getElementById('dailyCard'); if(!card) return;
+  var phaseColors2={menstrual:'#d4877a',follicular:'#d4a76a',ovulation:'#9b8fc4',luteal:'#7aab8a'};
+  var emojis={menstrual:'🌑',follicular:'🌱',ovulation:'🌕',luteal:'🍂'};
+  var phaseNames={menstrual:'Menstrual Phase',follicular:'Follicular Phase',ovulation:'Ovulation',luteal:'Luteal Phase'};
+  var color=phaseColors2[phase]||'#c9a96e';
+  var content=getDailyContent(cd,phase);
+  card.style.display='block';
+  card.style.borderColor=color+'55';
+  card.style.background='linear-gradient(135deg,'+color+'0a,var(--surface2))';
+  document.getElementById('dailyPhaseLabel').textContent='CD'+cd+' \u00b7 '+phaseNames[phase];
+  document.getElementById('dailyPhaseLabel').style.color=color;
+  document.getElementById('dailyEmoji').textContent=emojis[phase];
+  document.getElementById('dailyInsight').textContent=content.insight;
+  document.getElementById('dailyTip').textContent=content.tip;
+  // Personal insight from learning engine
+  var piEl = document.getElementById('personalInsight');
+  if (piEl) {
+    if (personalInsight) {
+      piEl.style.display = 'block';
+      piEl.textContent = '\u2728 ' + personalInsight;
+    } else {
+      piEl.style.display = 'none';
+    }
+  }
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function render() {
+  var cycle=currentCycle(); var cycleNum=state.currentCycleIdx+1;
+  var cl = document.getElementById('cycleLabel');
+  if (cl) cl.textContent = 'Cycle '+cycleNum;
+  var entries=[]; for(var si=0;si<cycle.entries.length;si++) entries.push(cycle.entries[si]);
+  entries.sort(function(a,b){return a.date<b.date?-1:1;});
+  var tempEntries=entries.filter(function(e){return e.temp!==null&&e.temp!==undefined;});
+  var ovResult=findOvulation(tempEntries); var ovIdx=ovResult?ovResult.ovIdx:-1;
+  var today=todayStr();
+  var isCurrentCycle = (state.currentCycleIdx === state.cycles.length - 1);
+  var lastEntryDate = tempEntries.length > 0 ? tempEntries[tempEntries.length-1].date : null;
+  var cdRefDate;
+  if (!isCurrentCycle) {
+    // Past cycle — use last entry
+    cdRefDate = lastEntryDate || today;
+  } else if (lastEntryDate && lastEntryDate >= today) {
+    // Last entry is today or future (past data entry) — use last entry
+    cdRefDate = lastEntryDate;
+  } else if (lastEntryDate && today > lastEntryDate) {
+    // Today is after last entry — use today (actively logging cycle)
+    cdRefDate = today;
+  } else {
+    cdRefDate = today;
+  }
+  var currentCD = cycleDayNum(cycle, cdRefDate);
+  var todayOvCD=(ovIdx>=0)?cycleDayNum(cycle,tempEntries[ovIdx].date):null;
+  var todayPhase=getPhase(currentCD,todayOvCD);
+
+  // Build personal profile
+  var profile = buildProfile();
+
+  // Get today's tags for PMS detection
+  var todayTags = [];
+  for (var ei = 0; ei < cycle.entries.length; ei++) {
+    if (cycle.entries[ei].date === today) { todayTags = cycle.entries[ei].tags || []; break; }
+  }
+
+  var personalInsight = getPersonalInsight(currentCD, todayPhase, profile, todayTags);
+  renderDailyCard(currentCD, todayPhase, personalInsight);
+
+  // Next period — use profile for smarter estimate
+  var daysLeft;
+  // If PMS logged today, use personal PMS→period avg
+  if (todayTags.indexOf('pms') >= 0 && profile.avgPmsDaysBeforePeriod) {
+    daysLeft = profile.avgPmsDaysBeforePeriod;
+  } else {
+    daysLeft = profile.avgCycleLen - currentCD;
+    if (daysLeft < 0) daysLeft = 0;
+  }
+
+  var periodText;
+  if (daysLeft === 0) periodText = 'Any day now';
+  else if (daysLeft === 1) periodText = '~1 day';
+  else periodText = '~' + daysLeft + ' days';
+
+  // Add confidence indicator
+  if (profile.confidence === 'high') periodText += ' \u2713';
+  else if (profile.confidence === 'low' && state.cycles.length < 2) periodText += ' (est.)';
+
+  document.getElementById('statNextPeriod').textContent = periodText;
+  drawChart(cycle);
+  // Entry count
+  document.getElementById('entryCount').textContent=tempEntries.length+' logged';
+  // Log table
+  var logBody=document.getElementById('logBody');
+  if(tempEntries.length===0){logBody.innerHTML='<div class="empty-state">No entries yet. Tap + Log to start.</div>';return;}
+  var reversed=tempEntries.slice().reverse();
+  var ovCD2=(ovIdx>=0)?cycleDayNum(cycle,tempEntries[ovIdx].date):null;
+  var phaseLabels={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal'};
+  var cidx=state.currentCycleIdx;
+  var html='<table class="log-table"><thead><tr><th>Date</th><th>CD</th><th>Temp</th><th>Phase</th><th>Tags</th><th></th></tr></thead><tbody>';
+  for(var ri=0;ri<reversed.length;ri++){
+    var e=reversed[ri]; var cd2=cycleDayNum(cycle,e.date);
+    var phase2=getPhase(cd2,ovCD2); var pc=phaseColors[phase2];
+    var tagsStr=e.tags?e.tags.join(', '):'';
+    html+='<tr><td>'+formatDateShort(e.date)+'</td>';
+    html+='<td style="font-family:monospace;color:var(--text-muted)">CD'+cd2+'</td>';
+    html+='<td class="temp-cell">'+e.temp.toFixed(2)+'</td>';
+    html+='<td><span class="phase-pill" style="background:'+pc+'22;color:'+pc+'">'+phaseLabels[phase2]+'</span></td>';
+    html+='<td style="color:var(--text-muted);font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tagsStr+'</td>';
+    html+='<td style="white-space:nowrap"><button class="edit-btn" onclick="editEntry('+cidx+',\''+e.date+'\')">Edit</button> <button class="del-btn" onclick="deleteEntry('+cidx+',\''+e.date+'\')">&#215;</button></td>';
+    html+='</tr>';
+  }
+  html+='</tbody></table>';
+  logBody.innerHTML=html;
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function exportCSV(){
+  var cycle=currentCycle();
+  var entries=cycle.entries.filter(function(e){return e.temp!==null&&e.temp!==undefined;}).sort(function(a,b){return a.date<b.date?-1:1;});
+  var csv='Date,Cycle Day,Temp (F),Tags,Notes\n';
+  for(var i=0;i<entries.length;i++){
+    var e=entries[i]; var tags=e.tags?e.tags.join(';'):''; var notes=e.notes||'';
+    csv+=e.date+','+cycleDayNum(cycle,e.date)+','+e.temp+',"'+tags+'","'+notes+'"\n';
+  }
+  var blob=new Blob([csv],{type:'text/csv'}); var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='lumin_cycle_'+(state.currentCycleIdx+1)+'.csv'; a.click();
+}
+
+function openDoctorExport(){
+  var reportHtml = buildDoctorReport();
+  // Extract just the body content from the report
+  var bodyMatch = reportHtml.match(/<body[^>]*>([\s\S]*)<\/body>/);
+  var content = bodyMatch ? bodyMatch[1] : reportHtml;
+  // Inject report styles inline
+  var styles = reportHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+  var styledContent = (styles ? '<style>'+styles[1]+'</style>' : '') + content;
+  document.getElementById('reportContent').innerHTML = styledContent;
+  document.getElementById('reportOverlay').style.display = 'block';
+  // Hide print/close buttons when actually printing
+}
+function closeReport(){
+  document.getElementById('reportOverlay').style.display = 'none';
+  document.getElementById('reportContent').innerHTML = '';
+}
+function generateCycleChartImage(cyc, ents) {
+  try {
+    var W = 560; var H = 140;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    var PAD = {top:20,right:16,bottom:28,left:40};
+    var cw = W-PAD.left-PAD.right; var ch = H-PAD.top-PAD.bottom;
+
+    // White background for print
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+
+    if (ents.length === 0) return null;
+
+    var temps = []; for(var ti=0;ti<ents.length;ti++) temps.push(ents[ti].temp);
+    var minT = Math.max(96, Math.min.apply(null,temps)-0.2);
+    var maxT = Math.min(99.5, Math.max.apply(null,temps)+0.3);
+    if (COVER_LINE > maxT) maxT = COVER_LINE+0.1;
+    if (COVER_LINE < minT) minT = COVER_LINE-0.1;
+    minT = Math.floor(minT*5)/5; maxT = Math.ceil(maxT*5)/5;
+    var tRange = maxT-minT; if(tRange===0) tRange=1;
+
+    function tx(i){ return ents.length<=1 ? PAD.left+cw/2 : PAD.left+(i/(ents.length-1))*cw; }
+    function ty(t){ return PAD.top+ch-((t-minT)/tRange)*ch; }
+
+    var ovRes = findOvulation(ents);
+    var ovIdx = ovRes ? ovRes.ovIdx : -1;
+    var confirmIdxs = ovRes ? ovRes.confirmIdxs : [];
+
+    // Phase backgrounds
+    var phaseColorsReport = {menstrual:'#fde8e4',follicular:'#fef3e4',ovulation:'#ede9f8',luteal:'#e4f0e8'};
+    for(var pi=0;pi<ents.length;pi++){
+      var cd = cycleDayNum(cyc, ents[pi].date);
+      var ovCD = (ovIdx>=0) ? cycleDayNum(cyc, ents[ovIdx].date) : null;
+      var phase = getPhase(cd, ovCD);
+      var x1 = (pi===0)?PAD.left:(tx(pi-1)+tx(pi))/2;
+      var x2 = (pi===ents.length-1)?PAD.left+cw:(tx(pi)+tx(pi+1))/2;
+      ctx.fillStyle = phaseColorsReport[phase]||'#f9f9f9';
+      ctx.fillRect(x1,PAD.top,x2-x1,ch);
+    }
+
+    // Grid lines every 0.2°F
+    ctx.strokeStyle='#eeeeee'; ctx.lineWidth=0.5;
+    var gt=minT;
+    while(gt<=maxT+0.01){
+      var gy=ty(gt);
+      if(gy>=PAD.top&&gy<=PAD.top+ch){
+        ctx.beginPath();ctx.moveTo(PAD.left,gy);ctx.lineTo(PAD.left+cw,gy);ctx.stroke();
+        ctx.fillStyle='#999'; ctx.font='8px monospace'; ctx.textAlign='right';
+        ctx.fillText(gt.toFixed(1),PAD.left-3,gy+3);
+      }
+      gt=Math.round((gt+0.2)*10)/10;
+    }
+
+    // Cover line
+    var cly=ty(COVER_LINE);
+    ctx.strokeStyle='#c9a96e'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(PAD.left,cly);ctx.lineTo(PAD.left+cw,cly);ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Area fill
+    if(ents.length>1){
+      ctx.beginPath();ctx.moveTo(tx(0),PAD.top+ch);ctx.lineTo(tx(0),ty(ents[0].temp));
+      for(var ai=1;ai<ents.length;ai++) ctx.lineTo(tx(ai),ty(ents[ai].temp));
+      ctx.lineTo(tx(ents.length-1),PAD.top+ch);ctx.closePath();
+      ctx.fillStyle='rgba(140,90,40,0.08)';ctx.fill();
+    }
+
+    // Line
+    if(ents.length>1){
+      ctx.beginPath();ctx.moveTo(tx(0),ty(ents[0].temp));
+      for(var li=1;li<ents.length;li++) ctx.lineTo(tx(li),ty(ents[li].temp));
+      ctx.strokeStyle='#8a5c2a';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+    }
+
+    // Dots
+    for(var di=0;di<ents.length;di++){
+      var isOv=(di===ovIdx&&ovIdx>=0);
+      var isConf=false; for(var cc=0;cc<confirmIdxs.length;cc++){if(confirmIdxs[cc]===di) isConf=true;}
+      ctx.beginPath();ctx.arc(tx(di),ty(ents[di].temp),isOv?4:2.5,0,Math.PI*2);
+      ctx.fillStyle=isOv?'#7b5cb0':(isConf?'rgba(123,92,176,0.4)':'#8a5c2a');
+      ctx.fill();
+    }
+
+    // OV marker
+    if(ovIdx>=0){
+      var ox=tx(ovIdx);
+      ctx.strokeStyle='rgba(123,92,176,0.4)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
+      ctx.beginPath();ctx.moveTo(ox,PAD.top);ctx.lineTo(ox,PAD.top+ch);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#7b5cb0';ctx.font='bold 8px monospace';ctx.textAlign='center';
+      ctx.fillText('OV',ox,PAD.top+8);
+    }
+
+    // X axis CD labels
+    ctx.fillStyle='#999';ctx.font='8px monospace';ctx.textAlign='center';
+    for(var xi=0;xi<ents.length;xi++){
+      if(ents.length<=20||xi%Math.ceil(ents.length/20)===0)
+        ctx.fillText('CD'+cycleDayNum(cyc,ents[xi].date),tx(xi),PAD.top+ch+16);
+    }
+
+    return canvas.toDataURL('image/png');
+  } catch(e) {
+    return null;
+  }
+}
+
+function buildDoctorReport(){
+  var now=new Date(); var mo=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dateStr=mo[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear();
+  var cycleRows=''; var ovDays=[];
+  for(var ci=0;ci<state.cycles.length;ci++){
+    var cyc=state.cycles[ci];
+    var ents=cyc.entries.filter(function(e){return e.temp!==null&&e.temp!==undefined;}).sort(function(a,b){return a.date<b.date?-1:1;});
+    if(ents.length===0) continue;
+    var ovRes=findOvulation(ents); var ovCD=ovRes?(ovRes.ovIdx+1):null; if(ovCD) ovDays.push(ovCD);
+    var luteal=ovRes?(ents.length-(ovRes.ovIdx+1)):null;
+    var temps=[]; for(var ei=0;ei<ents.length;ei++) temps.push(ents[ei].temp);
+    var lo=Math.min.apply(null,temps).toFixed(2); var hi=Math.max.apply(null,temps).toFixed(2);
+    var symMap={};
+    for(var ei2=0;ei2<ents.length;ei2++){var tags=ents[ei2].tags||[];for(var ti=0;ti<tags.length;ti++){if(ALL_SYMPTOMS.indexOf(tags[ti])>=0) symMap[tags[ti]]=true;}}
+    var symList=[]; for(var ss in symMap){if(symMap.hasOwnProperty(ss)) symList.push(ss);}
+
+    // Generate chart image for this cycle
+    var chartImg = generateCycleChartImage(cyc, ents);
+    var chartHtml = chartImg ? '<img src="'+chartImg+'" style="width:100%;max-width:560px;display:block;margin:10px 0 4px;border:1px solid #eee;border-radius:4px;" />' : '';
+
+    // Phase color legend for report
+    var legendHtml = '<div style="display:flex;gap:12px;font-size:10px;color:#888;margin-bottom:6px;">'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:#fde8e4;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Menstrual</span>'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:#fef3e4;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Follicular</span>'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:#ede9f8;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Ovulation</span>'
+      +'<span><span style="display:inline-block;width:10px;height:10px;background:#e4f0e8;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Luteal</span>'
+      +'<span style="margin-left:auto;">--- 97.95°F threshold &nbsp; <span style="color:#7b5cb0;">OV = ovulation confirmed</span></span>'
+      +'</div>';
+
+    cycleRows += '<div style="margin-bottom:32px;page-break-inside:avoid;">';
+    cycleRows += '<h3 style="font-size:14px;color:#2a1f14;margin:0 0 6px;">Cycle '+(ci+1)+' &nbsp;<span style="font-weight:normal;color:#888;font-size:12px;">Started '+formatDate(cyc.startDate)+'</span></h3>';
+    cycleRows += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;"><tr>';
+    cycleRows += '<td style="padding:4px 10px 4px 0;color:#555;">Days logged: <strong>'+ents.length+'</strong></td>';
+    cycleRows += '<td style="padding:4px 10px;">Ovulation: <strong>'+(ovCD?'CD'+ovCD:'Not confirmed')+'</strong></td>';
+    cycleRows += '<td style="padding:4px 10px;">Luteal phase: <strong>'+(luteal!==null?luteal+' days':'—')+'</strong></td>';
+    cycleRows += '<td style="padding:4px 0;">Temp range: <strong>'+lo+' – '+hi+'°F</strong></td>';
+    cycleRows += '</tr></table>';
+    cycleRows += chartHtml;
+    cycleRows += legendHtml;
+    if(symList.length) cycleRows += '<div style="font-size:11px;color:#666;margin-top:4px;">Symptoms logged: '+symList.join(', ')+'</div>';
+    cycleRows += '</div>';
+  }
+  var symData={};
+  for(var si=0;si<ALL_SYMPTOMS.length;si++) symData[ALL_SYMPTOMS[si]]=[];
+  for(var ci2=0;ci2<state.cycles.length;ci2++){
+    var c2=state.cycles[ci2]; var e2=c2.entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+    for(var ei3=0;ei3<e2.length;ei3++){var tags2=e2[ei3].tags||[];var cd2=cycleDayNum(c2,e2[ei3].date);for(var ti2=0;ti2<tags2.length;ti2++){if(symData.hasOwnProperty(tags2[ti2])) symData[tags2[ti2]].push(cd2);}}
+  }
+  var patternRows='';
+  for(var sym in symData){if(symData.hasOwnProperty(sym)&&symData[sym].length>0){var cds=symData[sym];var sum=0;for(var j=0;j<cds.length;j++) sum+=cds[j];var avg=Math.round(sum/cds.length);patternRows+='<tr><td>'+sym.charAt(0).toUpperCase()+sym.slice(1)+'</td><td>'+cds.length+'</td><td>CD'+avg+'</td><td>CD'+Math.min.apply(null,cds)+' – CD'+Math.max.apply(null,cds)+'</td></tr>';}}
+  var avgOv=ovDays.length?Math.round(ovDays.reduce(function(a,b){return a+b;},0)/ovDays.length):'N/A';
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lumin Health Report</title><style>body{font-family:Georgia,serif;color:#1a1a1a;max-width:720px;margin:40px auto;padding:0 24px;line-height:1.6;}h1{font-size:26px;color:#2a1f14;margin-bottom:4px;}h2{font-size:15px;border-bottom:1px solid #ddd;padding-bottom:6px;margin:28px 0 14px;color:#2a1f14;}h3{font-size:14px;color:#2a1f14;}.subtitle{color:#666;font-size:13px;margin-bottom:32px;}table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;}th{background:#f5f0eb;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#555;border-bottom:2px solid #ddd;}td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top;}.sum-box{display:inline-block;background:#f5f0eb;border-radius:6px;padding:10px 18px;margin:0 8px 10px 0;text-align:center;}.sum-val{font-size:20px;font-weight:bold;color:#8a5c2a;}.sum-label{font-size:10px;color:#888;margin-top:2px;}.note{font-size:11px;color:#888;font-style:italic;}@media print{.no-print{display:none;}}</style></head><body>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div><h1>BBT Cycle Report</h1><div class="subtitle">Generated '+dateStr+' &nbsp;&middot;&nbsp; '+state.cycles.length+' cycle'+(state.cycles.length!==1?'s':'')+' tracked &nbsp;&middot;&nbsp; Prepared with Lumin</div></div><button class="no-print" onclick="window.print()" style="background:#8a5c2a;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:12px;cursor:pointer;margin-top:8px;flex-shrink:0;">Print / Save PDF</button></div>'
+    +'<h2>Overview</h2><div><div class="sum-box"><div class="sum-val">'+state.cycles.length+'</div><div class="sum-label">Cycles tracked</div></div><div class="sum-box"><div class="sum-val">'+(ovDays.length?ovDays.length+'/'+state.cycles.length:'0')+'</div><div class="sum-label">OV confirmed</div></div><div class="sum-box"><div class="sum-val">'+(avgOv!=='N/A'?'CD'+avgOv:avgOv)+'</div><div class="sum-label">Avg ovulation day</div></div></div>'
+    +'<h2>Cycle Charts</h2>'+cycleRows
+    +'<h2>Symptom Patterns</h2>'+(patternRows?'<table><thead><tr><th>Symptom</th><th>Occurrences</th><th>Avg cycle day</th><th>Range</th></tr></thead><tbody>'+patternRows+'</tbody></table>':'<p class="note">No symptoms logged.</p>')
+    +'<h2>Clinical Notes</h2><p class="note">Basal body temperature logged daily upon waking. Ovulation confirmed when 3 consecutive temperatures exceed the 97.95°F threshold (cover line). Data is self-tracked and should be interpreted in a clinical context. Tracked using Lumin BBT app.</p></body></html>';
+}
+
+// ─── ONBOARDING ──────────────────────────────────────────────────────────────
+var onboardCycleChoice = null;
+
+function selectOnboardCycle(choice) {
+  onboardCycleChoice = choice;
+  var yes = document.getElementById('onboardYes');
+  var no = document.getElementById('onboardNo');
+  var wrap = document.getElementById('newCycleSinceWrap');
+  if (choice === 'yes') {
+    yes.style.background = 'rgba(201,169,110,0.15)';
+    yes.style.borderColor = '#c9a96e';
+    yes.style.color = '#c9a96e';
+    no.style.background = '#1e1812';
+    no.style.borderColor = '#2e2520';
+    no.style.color = '#8a7b6e';
+    wrap.style.display = 'none';
+  } else {
+    no.style.background = 'rgba(201,169,110,0.15)';
+    no.style.borderColor = '#c9a96e';
+    no.style.color = '#c9a96e';
+    yes.style.background = '#1e1812';
+    yes.style.borderColor = '#2e2520';
+    yes.style.color = '#8a7b6e';
+    wrap.style.display = 'block';
+    var d2 = document.getElementById('onboardingDate2');
+    if (!d2.value) d2.value = todayStr();
+  }
+}
+
+function finishOnboarding() {
+  var date1 = document.getElementById('onboardingDate').value;
+  if (!date1) { showToast('Please select when your last period started'); return; }
+  if (!onboardCycleChoice) { showToast('Please answer whether you are still in that cycle'); return; }
+
+  state.cycles = [];
+  state.currentCycleIdx = 0;
+
+  if (onboardCycleChoice === 'yes') {
+    // Still in cycle that started on date1
+    state.cycles.push(newCycleObj(date1));
+    state.currentCycleIdx = 0;
+  } else {
+    // A new cycle has started since — add the old one and the new one
+    var date2 = document.getElementById('onboardingDate2').value;
+    if (!date2) { showToast('Please select when your most recent period started'); return; }
+    if (date2 <= date1) { showToast('Most recent period must be after the first'); return; }
+    state.cycles.push(newCycleObj(date1));
+    state.cycles.push(newCycleObj(date2));
+    state.currentCycleIdx = 1;
+  }
+
+  saveState();
+  document.getElementById('onboarding').style.display = 'none';
+  document.getElementById('dateInput').value = todayStr();
+  render();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init() {
+  var loading = document.getElementById('loadingScreen');
+  try {
+    loadState();
+  } catch(e) {
+    state = { cycles: [], currentCycleIdx: 0 };
+  }
+  if (loading) loading.style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+
+  var hasData = state.cycles && state.cycles.length > 0;
+  if (!hasData) {
+    var d = document.getElementById('onboardingDate');
+    if (d) d.value = todayStr();
+    document.getElementById('onboarding').style.display = 'block';
+  } else {
+    document.getElementById('dateInput').value = todayStr();
+    render();
+  }
+  window.addEventListener('resize', function(){ drawChart(currentCycle()); });
+}
+init();
+</script>
+</body>
+</html>
