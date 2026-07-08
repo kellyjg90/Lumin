@@ -198,6 +198,7 @@ canvas{display:block;width:100%;}
     </div>
     <div id="panelCycle" style="padding-top:12px;">
       <canvas id="bbtChart" height="220"></canvas>
+      <div id="bbtChartTapInfo" style="font-size:10px;color:#4a3f36;text-align:center;margin-top:4px;height:14px;">Tap a point to see its date</div>
       <div class="phase-legend-row">
         <div class="pl-item"><div class="pl-dot" style="background:rgba(122,171,138,0.4);border:1px solid #7aab8a;border-radius:2px;width:9px;height:7px;"></div>Fertile window</div>
         <div class="pl-item" style="margin-left:8px;"><div style="width:18px;height:1px;background:#c9a96e;border-top:1px dashed #c9a96e;display:inline-block;vertical-align:middle;margin-right:4px;"></div>97.95°F</div>
@@ -413,6 +414,34 @@ var ALL_SYMPTOMS = ['period','period light','period heavy','spotting','pms','cra
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
 var STORAGE_KEY = 'lumin_bbt_v2';
+// Tracks {x,y,date,temp,cd} for each rendered chart point, keyed by canvas id — lets tap/click
+// find the nearest point and show its real date without duplicating hit-test math per chart.
+var chartPointsMap = {};
+function wireChartTap(canvasId, infoElId) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  // Mini-chart canvases are destroyed and recreated (via innerHTML) every time the All Cycles tab
+  // redraws, so we track "already wired" on the element itself, not by id — a fresh element from a
+  // rebuilt DOM won't carry the flag even if an old element with the same id was wired before.
+  if (canvas.__tapWired) return;
+  function handleTap(evt) {
+    var pts = chartPointsMap[canvasId];
+    if (!pts || pts.length === 0) return;
+    var rect = canvas.getBoundingClientRect();
+    var clientX = (evt.touches && evt.touches[0]) ? evt.touches[0].clientX : evt.clientX;
+    var tapX = clientX - rect.left;
+    var nearest = pts[0]; var bestDist = Math.abs(pts[0].x - tapX);
+    for (var i = 1; i < pts.length; i++) {
+      var d = Math.abs(pts[i].x - tapX);
+      if (d < bestDist) { bestDist = d; nearest = pts[i]; }
+    }
+    var infoEl = document.getElementById(infoElId);
+    if (infoEl) infoEl.textContent = 'CD'+nearest.cd+' · '+formatDate(nearest.date)+' · '+nearest.temp.toFixed(2)+'°F';
+  }
+  canvas.addEventListener('click', handleTap);
+  canvas.addEventListener('touchstart', function(e){ handleTap(e); }, {passive:true});
+  canvas.__tapWired = true;
+}
 
 function loadState() {
   try {
@@ -1228,6 +1257,12 @@ function drawChart(cycle) {
     if(tempEntries.length<=15||xi%Math.ceil(tempEntries.length/15)===0)
       ctx.fillText('CD'+cycleDayNum(cycle,tempEntries[xi].date),tx(xi),PAD.top+ch+14);
   }
+
+  // Record point positions for tap-to-see-date, and wire up the tap handler
+  chartPointsMap['bbtChart'] = tempEntries.map(function(e, i){
+    return { x: tx(i), y: ty(e.temp), date: e.date, temp: e.temp, cd: cycleDayNum(cycle, e.date) };
+  });
+  wireChartTap('bbtChart', 'bbtChartTapInfo');
 }
 
 // ─── STACKED MINI CHARTS ─────────────────────────────────────────────────────
@@ -1305,6 +1340,7 @@ function drawOverview() {
     html += '</div>';
     // Canvas
     html += '<canvas id="miniChart_'+vc.idx+'" height="130" style="display:block;width:100%;border-radius:8px;background:#15110e;"></canvas>';
+    html += '<div id="miniChartTapInfo_'+vc.idx+'" style="font-size:9px;color:#4a3f36;text-align:center;margin-top:3px;height:12px;">Tap a point to see its date</div>';
     html += '</div>';
   }
 
@@ -1527,6 +1563,13 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
     ctx.fillStyle = '#2e2520';
     ctx.fillText('CD'+maxLen, txDay(maxLen), PAD.top+ch+14);
   }
+
+  // Record point positions for tap-to-see-date, and wire up the tap handler
+  var miniCanvasId = 'miniChart_'+vc.idx;
+  chartPointsMap[miniCanvasId] = ents.map(function(e, i){
+    return { x: tx(i), y: ty(e.temp), date: e.date, temp: e.temp, cd: cycleDayNum(vc.cycle, e.date) };
+  });
+  wireChartTap(miniCanvasId, 'miniChartTapInfo_'+vc.idx);
 }
 // ─── PATTERNS ────────────────────────────────────────────────────────────────
 function cdToPhaseLabel(cd, ovCD) {
