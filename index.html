@@ -1243,10 +1243,12 @@ function drawOverview() {
 
   // Global temp range across all cycles so all charts share same Y scale
   var allTemps = [];
-  var globalMaxLen = 1; // shared X axis length — longest cycle
+  var globalMaxLen = 1; // shared X axis length — longest cycle, measured in actual cycle days (not entry count)
   for (var vi = 0; vi < validCycles.length; vi++) {
-    for (var vei = 0; vei < validCycles[vi].ents.length; vei++) allTemps.push(validCycles[vi].ents[vei].temp);
-    if (validCycles[vi].ents.length > globalMaxLen) globalMaxLen = validCycles[vi].ents.length;
+    var vcEnts = validCycles[vi].ents;
+    for (var vei = 0; vei < vcEnts.length; vei++) allTemps.push(vcEnts[vei].temp);
+    var lastCD = vcEnts.length ? cycleDayNum(validCycles[vi].cycle, vcEnts[vcEnts.length-1].date) : 0;
+    if (lastCD > globalMaxLen) globalMaxLen = lastCD;
   }
   var globalMin = Math.max(96, Math.min.apply(null, allTemps) - 0.2);
   var globalMax = Math.min(99.5, Math.max.apply(null, allTemps) + 0.3);
@@ -1397,10 +1399,17 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
   var ents = vc.ents;
   if (ents.length === 0) return;
 
-  // X axis uses globalMaxLen so all charts align — CD1 is always same x position
+  // X axis uses globalMaxLen (in real cycle days) so all charts align — CD1 is always same x position.
+  // Positioning by actual cycle day (not array index) means logging gaps show up as gaps, not compression.
   function tx(i) {
     if (maxLen <= 1) return PAD.left + cw/2;
-    return PAD.left + (i/(maxLen-1))*cw;
+    var cd = cycleDayNum(vc.cycle, ents[i].date);
+    return PAD.left + ((cd-1)/(maxLen-1))*cw;
+  }
+  // Position by a raw cycle-day number rather than an entries-array index (used for axis labels)
+  function txDay(day) {
+    if (maxLen <= 1) return PAD.left + cw/2;
+    return PAD.left + ((day-1)/(maxLen-1))*cw;
   }
   function ty(t) { return PAD.top + ch - ((t - globalMin)/tRange)*ch; }
 
@@ -1475,15 +1484,16 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
   // X axis — CD1 always at left, show last actual entry and max length marker
   ctx.fillStyle = '#4a3f36'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
   ctx.fillText('CD1', tx(0), PAD.top+ch+14);
-  // Show last logged day for this cycle
+  // Show last logged day for this cycle (actual cycle day, not entry count — they differ when days were missed)
+  var lastCD = cycleDayNum(vc.cycle, ents[ents.length-1].date);
   if (ents.length > 1) {
     ctx.fillStyle = color + '99';
-    ctx.fillText('CD'+ents.length, tx(ents.length-1), PAD.top+ch+14);
+    ctx.fillText('CD'+lastCD, tx(ents.length-1), PAD.top+ch+14);
   }
   // Show max length marker dimly so you can see where the full cycle would end
-  if (maxLen > ents.length && maxLen > 1) {
+  if (maxLen > lastCD && maxLen > 1) {
     ctx.fillStyle = '#2e2520';
-    ctx.fillText('CD'+maxLen, tx(maxLen-1), PAD.top+ch+14);
+    ctx.fillText('CD'+maxLen, txDay(maxLen), PAD.top+ch+14);
   }
 }
 // ─── PATTERNS ────────────────────────────────────────────────────────────────
