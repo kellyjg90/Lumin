@@ -510,7 +510,7 @@ function getFertileWindow() {
   var ovDays = [];
   for (var i = 0; i < state.cycles.length; i++) {
     var ents = state.cycles[i].entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
-    var ov = findOvulation(ents); if (ov) ovDays.push(ov.ovIdx+1);
+    var ov = findOvulation(ents); if (ov) ovDays.push(cycleDayNum(state.cycles[i], ents[ov.ovIdx].date));
   }
   var avgOvCD = 14;
   if (ovDays.length > 0) { var sum=0; for(var j=0;j<ovDays.length;j++) sum+=ovDays[j]; avgOvCD=Math.round(sum/ovDays.length); }
@@ -548,9 +548,16 @@ function buildProfile() {
 
     var ovRes = findOvulation(ents);
     if (ovRes) {
-      var ovCD = ovRes.ovIdx + 1;
+      var ovCD = cycleDayNum(cyc, ents[ovRes.ovIdx].date);
       ovDays.push(ovCD);
-      var luteal = ents.length - (ovRes.ovIdx + 1);
+      // Prefer the true luteal length (ovulation date to next period's actual start date) when known;
+      // fall back to last-logged-day minus ovulation day for the current, still-open cycle.
+      var luteal;
+      if (i < state.cycles.length - 1) {
+        luteal = Math.round((new Date(state.cycles[i+1].startDate+'T12:00:00') - new Date(ents[ovRes.ovIdx].date+'T12:00:00')) / 86400000);
+      } else {
+        luteal = cycleDayNum(cyc, ents[ents.length-1].date) - ovCD;
+      }
       if (luteal > 0) lutealLengths.push(luteal);
     }
 
@@ -571,7 +578,7 @@ function buildProfile() {
     }
 
     // Symptom phase mapping
-    var cycleOvCD = ovRes ? (ovRes.ovIdx + 1) : null;
+    var cycleOvCD = ovRes ? cycleDayNum(cyc, ents[ovRes.ovIdx].date) : null;
     var allE = cyc.entries.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
     for (var ei2 = 0; ei2 < allE.length; ei2++) {
       var etags = allE[ei2].tags || [];
@@ -1265,9 +1272,21 @@ function drawOverview() {
     var color = CYCLE_PALETTE[vc.idx % CYCLE_PALETTE.length];
     var isCurrent = (vc.idx === state.cycles.length - 1);
 
-    // Stats line
-    var ovStr = ovRes ? 'OV CD'+(ovRes.ovIdx+1) : 'OV not confirmed';
-    var luteal = ovRes ? (vc.ents.length - (ovRes.ovIdx+1))+'d luteal' : '';
+    // Stats line — use actual cycle days, not array indices, so gaps in logging don't distort these
+    var ovCDReal = ovRes ? cycleDayNum(vc.cycle, vc.ents[ovRes.ovIdx].date) : null;
+    var ovStr = ovCDReal ? 'OV CD'+ovCDReal : 'OV not confirmed';
+    var lastCDForCycle = cycleDayNum(vc.cycle, vc.ents[vc.ents.length-1].date);
+    var nextCycleForThis = (vc.idx < state.cycles.length - 1) ? state.cycles[vc.idx+1] : null;
+    var lutealDays = null;
+    if (ovCDReal) {
+      lutealDays = nextCycleForThis
+        ? Math.round((new Date(nextCycleForThis.startDate+'T12:00:00') - new Date(vc.ents[ovRes.ovIdx].date+'T12:00:00')) / 86400000)
+        : (lastCDForCycle - ovCDReal);
+    }
+    var luteal = (lutealDays !== null && lutealDays > 0) ? lutealDays+'d luteal' : '';
+    var spanDays = nextCycleForThis
+      ? Math.round((new Date(nextCycleForThis.startDate+'T12:00:00') - new Date(vc.cycle.startDate+'T12:00:00')) / 86400000)
+      : lastCDForCycle;
     var temps = vc.ents.map ? vc.ents.map(function(e){return e.temp;}) : [];
     // iOS safe map
     var tempsArr = []; for(var ti=0;ti<vc.ents.length;ti++) tempsArr.push(vc.ents[ti].temp);
@@ -1282,7 +1301,7 @@ function drawOverview() {
     html += '<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:'+color+';">Cycle '+(vc.idx+1)+'</span>';
     if (isCurrent) html += '<span style="font-size:9px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;">current</span>';
     html += '</div>';
-    html += '<div style="font-size:10px;color:var(--text-muted);">'+formatDateShort(vc.cycle.startDate)+' &nbsp;·&nbsp; '+vc.ents.length+' days &nbsp;·&nbsp; '+ovStr+(luteal?' &nbsp;·&nbsp; '+luteal:'')+'</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);">'+formatDateShort(vc.cycle.startDate)+' &nbsp;·&nbsp; '+spanDays+' days'+(nextCycleForThis?'':' (ongoing)')+' &nbsp;·&nbsp; '+ovStr+(luteal?' &nbsp;·&nbsp; '+luteal:'')+'</div>';
     html += '</div>';
     // Canvas
     html += '<canvas id="miniChart_'+vc.idx+'" height="130" style="display:block;width:100%;border-radius:8px;background:#15110e;"></canvas>';
@@ -1302,7 +1321,13 @@ function drawOverview() {
       if (clen > 15 && clen < 50) cycleLens.push(clen);
     }
     var tovRes = findOvulation(tc.ents);
-    if (tovRes) lutealLens.push(tc.ents.length - (tovRes.ovIdx + 1));
+    if (tovRes) {
+      var tOvDate = tc.ents[tovRes.ovIdx].date;
+      var tLuteal = (ti2 < validCycles.length - 1)
+        ? Math.round((new Date(validCycles[ti2+1].cycle.startDate+'T12:00:00') - new Date(tOvDate+'T12:00:00')) / 86400000)
+        : (cycleDayNum(tc.cycle, tc.ents[tc.ents.length-1].date) - cycleDayNum(tc.cycle, tOvDate));
+      if (tLuteal > 0) lutealLens.push(tLuteal);
+    }
   }
 
   function trendLabel(arr) {
@@ -1354,8 +1379,15 @@ function drawOverview() {
   for (var si = validCycles.length-1; si >= 0; si--) {
     var sv = validCycles[si];
     var sovRes = findOvulation(sv.ents);
-    var sovStr = sovRes ? 'CD'+(sovRes.ovIdx+1) : '—';
-    var sluteal = sovRes ? (sv.ents.length-(sovRes.ovIdx+1))+'d' : '—';
+    var sovCDReal = sovRes ? cycleDayNum(sv.cycle, sv.ents[sovRes.ovIdx].date) : null;
+    var sovStr = sovCDReal ? 'CD'+sovCDReal : '—';
+    var sNextCycle = (sv.idx < state.cycles.length - 1) ? state.cycles[sv.idx+1] : null;
+    var slutealDays = sovCDReal
+      ? (sNextCycle
+          ? Math.round((new Date(sNextCycle.startDate+'T12:00:00') - new Date(sv.ents[sovRes.ovIdx].date+'T12:00:00')) / 86400000)
+          : (cycleDayNum(sv.cycle, sv.ents[sv.ents.length-1].date) - sovCDReal))
+      : null;
+    var sluteal = (slutealDays !== null && slutealDays > 0) ? slutealDays+'d' : '—';
     var stemps = []; for(var sti=0;sti<sv.ents.length;sti++) stemps.push(sv.ents[sti].temp);
     var slo = Math.min.apply(null,stemps).toFixed(2); var shi = Math.max.apply(null,stemps).toFixed(2);
     var scolor = CYCLE_PALETTE[sv.idx%CYCLE_PALETTE.length];
@@ -1483,7 +1515,7 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
   // X axis: just first and last CD
   // X axis — CD1 always at left, show last actual entry and max length marker
   ctx.fillStyle = '#4a3f36'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
-  ctx.fillText('CD1', tx(0), PAD.top+ch+14);
+  ctx.fillText('CD'+cycleDayNum(vc.cycle, ents[0].date), tx(0), PAD.top+ch+14);
   // Show last logged day for this cycle (actual cycle day, not entry count — they differ when days were missed)
   var lastCD = cycleDayNum(vc.cycle, ents[ents.length-1].date);
   if (ents.length > 1) {
@@ -1599,7 +1631,7 @@ function renderPatterns(){
     var cycle = state.cycles[ci];
     var ents = cycle.entries.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
     var ovRes = findOvulation(ents);
-    var cycleOvCD = ovRes ? (ovRes.ovIdx+1) : null;
+    var cycleOvCD = ovRes ? cycleDayNum(cycle, ents[ovRes.ovIdx].date) : null;
     for (var ei = 0; ei < ents.length; ei++) {
       var tags = ents[ei].tags || [];
       var cd = cycleDayNum(cycle, ents[ei].date);
@@ -2022,8 +2054,15 @@ function buildDoctorReport(){
     var cyc=state.cycles[ci];
     var ents=cyc.entries.filter(function(e){return e.temp!==null&&e.temp!==undefined;}).sort(function(a,b){return a.date<b.date?-1:1;});
     if(ents.length===0) continue;
-    var ovRes=findOvulation(ents); var ovCD=ovRes?(ovRes.ovIdx+1):null; if(ovCD) ovDays.push(ovCD);
-    var luteal=ovRes?(ents.length-(ovRes.ovIdx+1)):null;
+    var ovRes=findOvulation(ents);
+    var ovCD=ovRes?cycleDayNum(cyc, ents[ovRes.ovIdx].date):null;
+    if(ovCD) ovDays.push(ovCD);
+    var nextCyc=(ci<state.cycles.length-1)?state.cycles[ci+1]:null;
+    var luteal=ovCD
+      ? (nextCyc
+          ? Math.round((new Date(nextCyc.startDate+'T12:00:00')-new Date(ents[ovRes.ovIdx].date+'T12:00:00'))/86400000)
+          : (cycleDayNum(cyc, ents[ents.length-1].date)-ovCD))
+      : null;
     var temps=[]; for(var ei=0;ei<ents.length;ei++) temps.push(ents[ei].temp);
     var lo=Math.min.apply(null,temps).toFixed(2); var hi=Math.max.apply(null,temps).toFixed(2);
     var symMap={};
