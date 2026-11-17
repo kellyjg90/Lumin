@@ -132,6 +132,24 @@ canvas{display:block;width:100%;}
 /* Toast */
 .toast{position:fixed;bottom:90px;left:50%;-webkit-transform:translateX(-50%);transform:translateX(-50%);background:var(--surface2);border:1px solid var(--gold-dim);border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);opacity:0;pointer-events:none;z-index:200;-webkit-transition:opacity 0.3s;transition:opacity 0.3s;white-space:nowrap;}
 .toast.show{opacity:1;}
+
+/* Daily check-in */
+.ci-wrap{border-top:1px solid var(--border);margin-top:4px;padding-top:14px;}
+.ci-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--gold);margin-bottom:2px;}
+.ci-sub{font-size:11px;color:var(--text-muted);margin-bottom:10px;}
+.ci-toggle{display:flex;gap:6px;margin-bottom:12px;}
+.ci-toggle button{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:7px 4px;font-size:11px;font-family:inherit;cursor:pointer;}
+.ci-toggle button.on{border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,0.10);}
+.ci-label{font-size:12px;color:var(--text);margin:10px 0 5px;}
+.ci-scale{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;}
+.ci-scale button{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:9px 0;font-size:12px;font-family:'DM Mono',monospace;cursor:pointer;}
+.ci-scale button.on{background:var(--gold);color:#15110e;border-color:var(--gold);font-weight:700;}
+.ci-seg{display:flex;gap:6px;}
+.ci-seg button,.ci-chk{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:9px 4px;font-size:12px;font-family:inherit;cursor:pointer;}
+.ci-seg button.on,.ci-chk.on{background:rgba(201,169,110,0.15);border-color:var(--gold);color:var(--gold);}
+.ci-chk{display:block;width:100%;margin-top:8px;}
+.ci-note{width:100%;margin-top:10px;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;}
+.ci-saved{font-size:10px;color:var(--sage);margin-top:6px;height:12px;}
 </style>
 </head>
 <body>
@@ -203,6 +221,13 @@ canvas{display:block;width:100%;}
         <div class="pl-item"><div class="pl-dot" style="background:rgba(122,171,138,0.4);border:1px solid #7aab8a;border-radius:2px;width:9px;height:7px;"></div>Fertile window</div>
         <div class="pl-item" style="margin-left:8px;"><div style="width:18px;height:1px;background:#c9a96e;border-top:1px dashed #c9a96e;display:inline-block;vertical-align:middle;margin-right:4px;"></div>97.95°F</div>
       </div>
+      <div style="margin-top:14px;font-size:11px;color:var(--text-muted);">Check-in ratings by cycle day</div>
+      <canvas id="ratingsChart" height="150" style="margin-top:4px;"></canvas>
+      <div id="ratingsLegend" style="display:flex;gap:12px;font-size:10px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap;">
+        <span><span style="display:inline-block;width:9px;height:9px;background:#d4877a;margin-right:4px;border-radius:2px;"></span>Anxiety</span>
+        <span><span style="display:inline-block;width:9px;height:9px;background:#9b8fc4;margin-right:4px;border-radius:2px;"></span>Eating/social</span>
+        <span><span style="display:inline-block;width:9px;height:9px;background:#d4a76a;margin-right:4px;border-radius:2px;"></span>Fatigue</span>
+      </div>
     </div>
     <div id="panelOverview" style="display:none;padding-top:12px;">
       <div id="miniChartsContainer"></div>
@@ -269,6 +294,32 @@ canvas{display:block;width:100%;}
       </div>
       <textarea class="notes-input" id="notesInput" placeholder="Notes..."></textarea>
       <button class="save-btn" onclick="logEntry()">Save</button>
+    </div>
+
+    <!-- Daily check-in (ratings for yesterday by default) -->
+    <div class="ci-wrap" id="ciWrap">
+      <div class="ci-title">Daily check-in</div>
+      <div class="ci-sub" id="ciSub">Rate how it was. Tap to save.</div>
+      <div class="ci-toggle">
+        <button id="ciModeYest" onclick="ciSetMode('yest')">Yesterday</button>
+        <button id="ciModeSame" onclick="ciSetMode('same')">This day</button>
+      </div>
+      <div class="ci-label">Anxiety (0–10)</div>
+      <div class="ci-scale" id="ciAnx"></div>
+      <div class="ci-label">Anxiety around eating / other people (0–10)</div>
+      <div class="ci-scale" id="ciEat"></div>
+      <div class="ci-label">Fatigue (0–10)</div>
+      <div class="ci-scale" id="ciFat"></div>
+      <div class="ci-label">Cough / throat tightness after eating</div>
+      <div class="ci-seg" id="ciCough">
+        <button data-v="0" onclick="ciSetCough(0)">None</button>
+        <button data-v="1" onclick="ciSetCough(1)">Mild</button>
+        <button data-v="2" onclick="ciSetCough(2)">Bad</button>
+      </div>
+      <button class="ci-chk" id="ciLying" onclick="ciToggleLying()">Worse lying down</button>
+      <button class="ci-chk" id="ciPeriod" onclick="ciTogglePeriod()">Period started this day</button>
+      <input class="ci-note" id="ciNote" type="text" maxlength="200" placeholder="One-line note (optional)" onchange="ciSetNote(this.value)">
+      <div class="ci-saved" id="ciSaved"></div>
     </div>
 
     <!-- Symptoms always visible regardless of temp logged -->
@@ -478,6 +529,7 @@ function migrateState(p) {
     if (!p.cycles[i].entries) p.cycles[i].entries = [];
     if (!p.cycles[i].id) p.cycles[i].id = Date.now() + i;
     if (!p.cycles[i].startDate) p.cycles[i].startDate = todayStr();
+    for (var q = 0; q < p.cycles[i].entries.length; q++) { var re = p.cycles[i].entries[q]; if (re.ratings && typeof re.ratings !== 'object') delete re.ratings; }
   }
   return p;
 }
@@ -858,6 +910,7 @@ function onDateChange() {
   document.getElementById('dateLabel').textContent = formatDate(date);
   updateLoggedDisplay(date);
   updateSymDisplay(date);
+  if (typeof ciRender === 'function') ciRender();
   // Reset temp form
   document.getElementById('tempInput').value = '';
   document.getElementById('notesInput').value = '';
@@ -1061,7 +1114,10 @@ function editFromDisplay() {
 
 function deleteEntry(cycleIdx, date) {
   var entries=state.cycles[cycleIdx].entries; var newEntries=[];
-  for(var i=0;i<entries.length;i++){if(entries[i].date!==date) newEntries.push(entries[i]);}
+  for(var i=0;i<entries.length;i++){
+    if(entries[i].date!==date) newEntries.push(entries[i]);
+    else if(entries[i].ratings&&Object.keys(entries[i].ratings).length){ entries[i].temp=null; newEntries.push(entries[i]); } // keep check-in ratings
+  }
   state.cycles[cycleIdx].entries=newEntries;
   saveState();
   render(); updateLoggedDisplay(getSelectedDate());
@@ -1116,6 +1172,149 @@ function toggleEntries() {
   } else {
     body.style.display='none'; chevron.style.transform='rotate(0deg)';
     header.className='entries-header';
+  }
+}
+
+
+// ─── DAILY CHECK-IN ──────────────────────────────────────────────────────────
+var ciMode = 'yest';
+function ciDate() {
+  var d = getSelectedDate();
+  return ciMode === 'yest' ? addDays(d, -1) : d;
+}
+function ciCycleFor(date) {
+  // Cycle that already holds an entry for this date, else the cycle with the latest start <= date
+  var i, best = null;
+  for (i = 0; i < state.cycles.length; i++) {
+    for (var j = 0; j < state.cycles[i].entries.length; j++) {
+      if (state.cycles[i].entries[j].date === date) return state.cycles[i];
+    }
+  }
+  for (i = 0; i < state.cycles.length; i++) {
+    if (state.cycles[i].startDate <= date && (!best || state.cycles[i].startDate > best.startDate)) best = state.cycles[i];
+  }
+  return best || state.cycles[0];
+}
+function ciEntry(date, create) {
+  var cyc = ciCycleFor(date);
+  for (var i = 0; i < cyc.entries.length; i++) { if (cyc.entries[i].date === date) return cyc.entries[i]; }
+  if (!create) return null;
+  var e = { date: date, temp: null, tags: [], notes: '', ratings: {} };
+  cyc.entries.push(e);
+  cyc.entries.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+  return e;
+}
+function ciBuildScales() {
+  var defs = [['ciAnx','anx'],['ciEat','eatAnx'],['ciFat','fatigue']];
+  for (var d = 0; d < defs.length; d++) {
+    var el = document.getElementById(defs[d][0]);
+    if (!el || el.children.length) continue;
+    for (var n = 0; n <= 10; n++) {
+      var b = document.createElement('button');
+      b.textContent = n; b.setAttribute('data-v', n);
+      b.setAttribute('data-k', defs[d][1]);
+      b.onclick = (function(k, v){ return function(){ ciSetRating(k, v); }; })(defs[d][1], n);
+      el.appendChild(b);
+    }
+  }
+}
+function ciSetMode(m) { ciMode = m; ciRender(); }
+function ciRender() {
+  ciBuildScales();
+  var date = ciDate();
+  document.getElementById('ciModeYest').className = ciMode === 'yest' ? 'on' : '';
+  document.getElementById('ciModeSame').className = ciMode === 'same' ? 'on' : '';
+  document.getElementById('ciSub').textContent = 'Rating for ' + formatDate(date) + '. Tap to save.';
+  var e = ciEntry(date, false); var r = (e && e.ratings) || {};
+  var ids = [['ciAnx','anx'],['ciEat','eatAnx'],['ciFat','fatigue']];
+  for (var d = 0; d < ids.length; d++) {
+    var kids = document.getElementById(ids[d][0]).children;
+    for (var n = 0; n < kids.length; n++) kids[n].className = (r[ids[d][1]] === n) ? 'on' : '';
+  }
+  var cs = document.getElementById('ciCough').children;
+  for (var c = 0; c < cs.length; c++) cs[c].className = (r.cough === c) ? 'on' : '';
+  document.getElementById('ciLying').className = 'ci-chk' + (r.lying ? ' on' : '');
+  var hasPeriod = !!(e && e.tags && (e.tags.indexOf('period') >= 0 || e.tags.indexOf('period light') >= 0 || e.tags.indexOf('period heavy') >= 0));
+  document.getElementById('ciPeriod').className = 'ci-chk' + (hasPeriod ? ' on' : '');
+  document.getElementById('ciNote').value = r.note || '';
+}
+function ciCommit(msg) {
+  saveState(); render(); ciRender();
+  var s = document.getElementById('ciSaved'); if (s) s.textContent = msg || 'Saved';
+}
+function ciSetRating(key, val) {
+  var e = ciEntry(ciDate(), true); if (!e.ratings) e.ratings = {};
+  if (e.ratings[key] === val) delete e.ratings[key]; else e.ratings[key] = val;
+  ciCommit();
+}
+function ciSetCough(v) {
+  var e = ciEntry(ciDate(), true); if (!e.ratings) e.ratings = {};
+  if (e.ratings.cough === v) delete e.ratings.cough; else e.ratings.cough = v;
+  ciCommit();
+}
+function ciToggleLying() {
+  var e = ciEntry(ciDate(), true); if (!e.ratings) e.ratings = {};
+  if (e.ratings.lying) delete e.ratings.lying; else e.ratings.lying = true;
+  ciCommit();
+}
+function ciSetNote(v) {
+  var e = ciEntry(ciDate(), true); if (!e.ratings) e.ratings = {};
+  v = (v || '').trim();
+  if (v) e.ratings.note = v; else delete e.ratings.note;
+  ciCommit();
+}
+function ciTogglePeriod() {
+  var date = ciDate();
+  var e = ciEntry(date, true); if (!e.tags) e.tags = [];
+  var idx = e.tags.indexOf('period');
+  if (idx >= 0) { e.tags.splice(idx, 1); ciCommit(); return; }
+  e.tags.push('period');
+  var started = checkAutoNewCycle(date, e.tags);
+  if (started) {
+    // Move this entry (and its ratings) into the newly created cycle
+    for (var i = 0; i < state.cycles.length; i++) {
+      var ents = state.cycles[i].entries;
+      var k = ents.indexOf(e);
+      if (k >= 0 && state.cycles[i].startDate !== date) { ents.splice(k, 1); }
+    }
+    for (var c = 0; c < state.cycles.length; c++) {
+      if (state.cycles[c].startDate === date) { state.cycles[c].entries.push(e); state.cycles[c].entries.sort(function(a,b){return a.date<b.date?-1:1;}); }
+    }
+    showToast('New cycle started from ' + formatDateShort(date));
+  }
+  ciCommit();
+}
+
+// Ratings chart: bars per cycle day for current cycle
+function drawRatingsChart(cycle) {
+  var canvas = document.getElementById('ratingsChart'); if (!canvas) return;
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.parentElement.clientWidth; if (W <= 0) W = 300;
+  var H = 150; canvas.width = W*dpr; canvas.height = H*dpr; canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#15110e'; ctx.fillRect(0, 0, W, H);
+  var rated = cycle.entries.filter(function(e){ return e.ratings && (e.ratings.anx !== undefined || e.ratings.eatAnx !== undefined || e.ratings.fatigue !== undefined); });
+  if (!rated.length) { ctx.fillStyle = '#4a3f36'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText('Check-in ratings will show here', W/2, H/2); return; }
+  var PAD = { top: 10, right: 12, bottom: 22, left: 28 };
+  var cw = W - PAD.left - PAD.right, ch = H - PAD.top - PAD.bottom;
+  var maxCD = 1, i;
+  for (i = 0; i < rated.length; i++) maxCD = Math.max(maxCD, cycleDayNum(cycle, rated[i].date));
+  maxCD = Math.max(maxCD, 28);
+  var slot = cw / maxCD;
+  ctx.strokeStyle = '#2a2119'; ctx.fillStyle = '#6b5d50'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (var g = 0; g <= 10; g += 5) { var gy = PAD.top + ch - (g/10)*ch; ctx.beginPath(); ctx.moveTo(PAD.left, gy); ctx.lineTo(W-PAD.right, gy); ctx.stroke(); ctx.fillText(g, PAD.left-4, gy); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (var d = 1; d <= maxCD; d += (maxCD > 31 ? 7 : 7)) ctx.fillText('CD'+d, PAD.left + (d-0.5)*slot, H-PAD.bottom+6);
+  var series = [['anx','#d4877a'],['eatAnx','#9b8fc4'],['fatigue','#d4a76a']];
+  var bw = Math.max(1.5, (slot-2)/3);
+  for (i = 0; i < rated.length; i++) {
+    var cd = cycleDayNum(cycle, rated[i].date); if (cd < 1) continue;
+    for (var s2 = 0; s2 < 3; s2++) {
+      var v = rated[i].ratings[series[s2][0]]; if (v === undefined) continue;
+      var bh = (v/10)*ch;
+      ctx.fillStyle = series[s2][1];
+      ctx.fillRect(PAD.left + (cd-1)*slot + 1 + s2*bw, PAD.top + ch - bh, bw, bh);
+    }
   }
 }
 
@@ -1927,7 +2126,7 @@ function render() {
   else if (profile.confidence === 'low' && state.cycles.length < 2) periodText += ' (est.)';
 
   document.getElementById('statNextPeriod').textContent = periodText;
-  drawChart(cycle);
+  drawChart(cycle); drawRatingsChart(cycle);
   // Entry count
   document.getElementById('entryCount').textContent=tempEntries.length+' logged';
   // Log table
@@ -1957,11 +2156,15 @@ function render() {
 // ─── EXPORT ──────────────────────────────────────────────────────────────────
 function exportCSV(){
   var cycle=currentCycle();
-  var entries=cycle.entries.filter(function(e){return e.temp!==null&&e.temp!==undefined;}).sort(function(a,b){return a.date<b.date?-1:1;});
-  var csv='Date,Cycle Day,Temp (F),Tags,Notes\n';
+  var entries=cycle.entries.filter(function(e){return (e.temp!==null&&e.temp!==undefined)||(e.ratings&&Object.keys(e.ratings).length);}).sort(function(a,b){return a.date<b.date?-1:1;});
+  var coughNames=['none','mild','bad'];
+  function q(t){return '"'+String(t==null?'':t).replace(/"/g,'""')+'"';}
+  var csv='Date,Cycle Day,Temp (F),Anxiety (0-10),Eating/Social Anxiety (0-10),Fatigue (0-10),Cough After Eating,Worse Lying Down,Check-in Note,Tags,Notes\n';
   for(var i=0;i<entries.length;i++){
-    var e=entries[i]; var tags=e.tags?e.tags.join(';'):''; var notes=e.notes||'';
-    csv+=e.date+','+cycleDayNum(cycle,e.date)+','+e.temp+',"'+tags+'","'+notes+'"\n';
+    var e=entries[i]; var r=e.ratings||{}; var tags=e.tags?e.tags.join(';'):''; var notes=e.notes||'';
+    csv+=e.date+','+cycleDayNum(cycle,e.date)+','+(e.temp==null?'':e.temp)+','
+      +(r.anx==null?'':r.anx)+','+(r.eatAnx==null?'':r.eatAnx)+','+(r.fatigue==null?'':r.fatigue)+','
+      +(r.cough==null?'':coughNames[r.cough])+','+(r.lying?'yes':'')+','+q(r.note)+','+q(tags)+','+q(notes)+'\n';
   }
   var blob=new Blob([csv],{type:'text/csv'}); var a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='lumin_cycle_'+(state.currentCycleIdx+1)+'.csv'; a.click();
@@ -2146,12 +2349,24 @@ function buildDoctorReport(){
   }
   var patternRows='';
   for(var sym in symData){if(symData.hasOwnProperty(sym)&&symData[sym].length>0){var cds=symData[sym];var sum=0;for(var j=0;j<cds.length;j++) sum+=cds[j];var avg=Math.round(sum/cds.length);patternRows+='<tr><td>'+sym.charAt(0).toUpperCase()+sym.slice(1)+'</td><td>'+cds.length+'</td><td>CD'+avg+'</td><td>CD'+Math.min.apply(null,cds)+' – CD'+Math.max.apply(null,cds)+'</td></tr>';}}
+  var ratingRows='';
+  var coughNm=['None','Mild','Bad'];
+  for(var rc=0;rc<state.cycles.length;rc++){
+    var rcy=state.cycles[rc];
+    var rents=rcy.entries.filter(function(e){return e.ratings&&Object.keys(e.ratings).length;}).sort(function(a,b){return a.date<b.date?-1:1;});
+    for(var re2=0;re2<rents.length;re2++){
+      var rr=rents[re2].ratings;
+      ratingRows+='<tr><td>Cycle '+(rc+1)+'</td><td>'+formatDateShort(rents[re2].date)+'</td><td>CD'+cycleDayNum(rcy,rents[re2].date)+'</td><td>'+(rr.anx==null?'—':rr.anx)+'</td><td>'+(rr.eatAnx==null?'—':rr.eatAnx)+'</td><td>'+(rr.fatigue==null?'—':rr.fatigue)+'</td><td>'+(rr.cough==null?'—':coughNm[rr.cough])+(rr.lying?' (worse lying down)':'')+'</td><td>'+(rr.note?String(rr.note).replace(/</g,'&lt;'):'')+'</td></tr>';
+    }
+  }
+  var ratingsHtml=ratingRows?'<table><thead><tr><th>Cycle</th><th>Date</th><th>Day</th><th>Anxiety</th><th>Eating/social</th><th>Fatigue</th><th>Cough after eating</th><th>Note</th></tr></thead><tbody>'+ratingRows+'</tbody></table>':'<p class="note">No daily check-ins logged.</p>';
   var avgOv=ovDays.length?Math.round(ovDays.reduce(function(a,b){return a+b;},0)/ovDays.length):'N/A';
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lumin Health Report</title><style>body{font-family:Georgia,serif;color:#1a1a1a;max-width:720px;margin:40px auto;padding:0 24px;line-height:1.6;}h1{font-size:26px;color:#2a1f14;margin-bottom:4px;}h2{font-size:15px;border-bottom:1px solid #ddd;padding-bottom:6px;margin:28px 0 14px;color:#2a1f14;}h3{font-size:14px;color:#2a1f14;}.subtitle{color:#666;font-size:13px;margin-bottom:32px;}table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;}th{background:#f5f0eb;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#555;border-bottom:2px solid #ddd;}td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top;}.sum-box{display:inline-block;background:#f5f0eb;border-radius:6px;padding:10px 18px;margin:0 8px 10px 0;text-align:center;}.sum-val{font-size:20px;font-weight:bold;color:#8a5c2a;}.sum-label{font-size:10px;color:#888;margin-top:2px;}.note{font-size:11px;color:#888;font-style:italic;}@media print{.no-print{display:none;}}</style></head><body>'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div><h1>BBT Cycle Report</h1><div class="subtitle">Generated '+dateStr+' &nbsp;&middot;&nbsp; '+state.cycles.length+' cycle'+(state.cycles.length!==1?'s':'')+' tracked &nbsp;&middot;&nbsp; Prepared with Lumin</div></div><button class="no-print" onclick="window.print()" style="background:#8a5c2a;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:12px;cursor:pointer;margin-top:8px;flex-shrink:0;">Print / Save PDF</button></div>'
     +'<h2>Overview</h2><div><div class="sum-box"><div class="sum-val">'+state.cycles.length+'</div><div class="sum-label">Cycles tracked</div></div><div class="sum-box"><div class="sum-val">'+(ovDays.length?ovDays.length+'/'+state.cycles.length:'0')+'</div><div class="sum-label">OV confirmed</div></div><div class="sum-box"><div class="sum-val">'+(avgOv!=='N/A'?'CD'+avgOv:avgOv)+'</div><div class="sum-label">Avg ovulation day</div></div></div>'
     +'<h2>Cycle Charts</h2>'+cycleRows
     +'<h2>Symptom Patterns</h2>'+(patternRows?'<table><thead><tr><th>Symptom</th><th>Occurrences</th><th>Avg cycle day</th><th>Range</th></tr></thead><tbody>'+patternRows+'</tbody></table>':'<p class="note">No symptoms logged.</p>')
+    +'<h2>Daily Check-in Ratings (0–10)</h2>'+ratingsHtml
     +'<h2>Clinical Notes</h2><p class="note">Basal body temperature logged daily upon waking. Ovulation confirmed when 3 consecutive temperatures exceed the 97.95°F threshold (cover line). Data is self-tracked and should be interpreted in a clinical context. Tracked using Lumin BBT app.</p></body></html>';
 }
 
