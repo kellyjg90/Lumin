@@ -389,6 +389,20 @@ canvas{display:block;width:100%;}
         <span class="tag sym-tag" data-tag="light spotting" onclick="toggleSymTag(this)">Light Spotting</span>
       </div>
 
+      <div class="tag-section-label" style="color:var(--sky);">Throat &amp; Nose</div>
+      <div class="tags-row">
+        <span class="tag sym-tag" data-tag="stuffy nose" onclick="toggleSymTag(this)">Stuffy Nose</span>
+        <span class="tag sym-tag" data-tag="postnasal drip" onclick="toggleSymTag(this)">Postnasal Drip</span>
+        <span class="tag sym-tag" data-tag="throat lump" onclick="toggleSymTag(this)">Throat Lump</span>
+        <span class="tag sym-tag" data-tag="stuck swallow" onclick="toggleSymTag(this)">Stuck Swallow</span>
+        <span class="tag sym-tag" data-tag="breathing trouble" onclick="toggleSymTag(this)">Breathing Trouble</span>
+        <span class="tag sym-tag" data-tag="dry mouth" onclick="toggleSymTag(this)">Dry Mouth</span>
+        <span class="tag sym-tag" data-tag="cough after eating" onclick="toggleSymTag(this)">Cough After Eating</span>
+        <span class="tag sym-tag" data-tag="face eye swelling" onclick="toggleSymTag(this)">Face/Eye Swelling</span>
+        <span class="tag sym-tag" data-tag="jaw clenching" onclick="toggleSymTag(this)">Jaw Clenching</span>
+        <span class="tag sym-tag" data-tag="rough falling asleep" onclick="toggleSymTag(this)">Rough Falling Asleep</span>
+      </div>
+
       <div id="symLoggedDisplay" style="display:none;background:rgba(122,171,196,0.08);border:1px solid var(--sky);border-radius:8px;padding:8px 12px;margin-top:4px;">
         <div style="font-size:9px;color:var(--sky);font-family:'DM Mono',monospace;letter-spacing:0.08em;margin-bottom:3px;">LOGGED TODAY</div>
         <div id="symLoggedText" style="font-size:11px;color:var(--text-dim);"></div>
@@ -461,7 +475,7 @@ canvas{display:block;width:100%;}
 var COVER_LINE = 97.95;
 var activeTags = {};
 var state = { cycles: [], currentCycleIdx: 0 };
-var ALL_SYMPTOMS = ['period','period light','period heavy','spotting','pms','cramps','pelvic pain','breast tenderness','acne','bloating','gas','nausea','constipation','diarrhea','appetite changes','fatigue','headache','back pain','joint pain','lightheadedness','palpitations','insomnia','brain fog','itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','mittelschmerz','egg white cm','increased libido','breast sensitivity','light spotting','anxious','irritable','low mood','energetic','calm','sick'];
+var ALL_SYMPTOMS = ['period','period light','period heavy','spotting','pms','cramps','pelvic pain','breast tenderness','acne','bloating','gas','nausea','constipation','diarrhea','appetite changes','fatigue','headache','back pain','joint pain','lightheadedness','palpitations','insomnia','brain fog','itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','mittelschmerz','egg white cm','increased libido','breast sensitivity','light spotting','anxious','irritable','low mood','energetic','calm','sick','stuffy nose','postnasal drip','throat lump','stuck swallow','breathing trouble','dry mouth','cough after eating','face eye swelling','jaw clenching','rough falling asleep'];
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
 var STORAGE_KEY = 'lumin_bbt_v2';
@@ -1803,7 +1817,8 @@ var SYMPTOM_GROUPS = {
   'Histamine':   ['itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','palpitations','lightheadedness'],
   'Mood':        ['anxious','irritable','low mood','energetic','calm'],
   'Skin':        ['acne','flushing'],
-  'Cycle':       ['breast tenderness','breast sensitivity','spotting mid cycle']
+  'Cycle':       ['breast tenderness','breast sensitivity','spotting mid cycle'],
+  'Throat & Nose': ['stuffy nose','postnasal drip','throat lump','stuck swallow','breathing trouble','dry mouth','cough after eating','face eye swelling','jaw clenching','rough falling asleep']
 };
 
 function isObvious(sym, topPhase) {
