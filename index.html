@@ -586,6 +586,13 @@ function addDays(dateStr, n) {
 
 // ─── OVULATION ───────────────────────────────────────────────────────────────
 function findOvulation(entries) {
+  // Manual override: an entry marked ov:true is treated as ovulation day
+  for (var mi = 0; mi < entries.length; mi++) {
+    if (entries[mi].ov) {
+      var conf = []; for (var mc = mi+1; mc <= mi+3 && mc < entries.length; mc++) conf.push(mc);
+      return { ovIdx: mi, confirmIdxs: conf, manual: true };
+    }
+  }
   for (var i = 2; i < entries.length; i++) {
     if (entries[i].temp > COVER_LINE && entries[i-1].temp > COVER_LINE && entries[i-2].temp > COVER_LINE)
       return { ovIdx: Math.max(0, i-3), confirmIdxs: [i-2,i-1,i] };
@@ -1124,6 +1131,15 @@ function editFromDisplay() {
   saveState();
   document.getElementById('loggedDisplay').style.display='none';
   document.getElementById('logForm').style.display='block';
+}
+
+function toggleOv(cycleIdx, date) {
+  var ents = state.cycles[cycleIdx].entries; var was = false;
+  for (var i = 0; i < ents.length; i++) { if (ents[i].date === date) was = !!ents[i].ov; }
+  for (var j = 0; j < ents.length; j++) { delete ents[j].ov; }
+  if (!was) { for (var k = 0; k < ents.length; k++) { if (ents[k].date === date) ents[k].ov = true; } showToast('Ovulation set to ' + formatDateShort(date)); }
+  else showToast('Back to automatic ovulation');
+  saveState(); render();
 }
 
 function deleteEntry(cycleIdx, date) {
@@ -2161,7 +2177,7 @@ function render() {
     html+='<td class="temp-cell">'+e.temp.toFixed(2)+'</td>';
     html+='<td><span class="phase-pill" style="background:'+pc+'22;color:'+pc+'">'+phaseLabels[phase2]+'</span></td>';
     html+='<td style="color:var(--text-muted);font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tagsStr+'</td>';
-    html+='<td style="white-space:nowrap"><button class="edit-btn" onclick="editEntry('+cidx+',\''+e.date+'\')">Edit</button> <button class="del-btn" onclick="deleteEntry('+cidx+',\''+e.date+'\')">&#215;</button></td>';
+    html+='<td style="white-space:nowrap"><button class="edit-btn" style="'+(e.ov?'color:var(--lavender);border-color:var(--lavender);':'')+'" onclick="toggleOv('+cidx+',\''+e.date+'\')">OV</button> <button class="edit-btn" onclick="editEntry('+cidx+',\''+e.date+'\')">Edit</button> <button class="del-btn" onclick="deleteEntry('+cidx+',\''+e.date+'\')">&#215;</button></td>';
     html+='</tr>';
   }
   html+='</tbody></table>';
