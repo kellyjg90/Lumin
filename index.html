@@ -215,6 +215,11 @@ canvas{display:block;width:100%;}
       <button class="tab-btn" id="tabPatterns" onclick="switchTab('patterns')">Patterns</button>
     </div>
     <div id="panelCycle" style="padding-top:12px;">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+        <span>Cycle day 1:</span>
+        <input type="date" id="cycleStartInput" onchange="setCycleStart(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;">
+        <span id="cycleStartHint" style="color:var(--text-dim);"></span>
+      </div>
       <canvas id="bbtChart" height="220"></canvas>
       <div id="bbtChartTapInfo" style="font-size:10px;color:#4a3f36;text-align:center;margin-top:4px;height:14px;">Tap a point to see its date</div>
       <div class="phase-legend-row">
@@ -942,7 +947,7 @@ function onDateChange() {
   activeSymTags = {};
   var symTags = document.querySelectorAll('.sym-tag, .mood-tag');
   for (var s = 0; s < symTags.length; s++) symTags[s].className = symTags[s].className.replace(/ active/g,'');
-  var cycle = currentCycle();
+  var cycle = ciCycleFor(date);
   for (var ei = 0; ei < cycle.entries.length; ei++) {
     if (cycle.entries[ei].date === date && cycle.entries[ei].tags) {
       var etags = cycle.entries[ei].tags;
@@ -993,7 +998,7 @@ function toggleSymTag(el) {
 
 function saveSymptoms() {
   var date = getSelectedDate();
-  var cycle = currentCycle();
+  var cycle = ciCycleFor(date);
   var existing = null;
   for (var i = 0; i < cycle.entries.length; i++) { if (cycle.entries[i].date === date) { existing = cycle.entries[i]; break; } }
   var newSymTags = [];
@@ -1012,8 +1017,8 @@ function saveSymptoms() {
   var newCycleStarted = checkAutoNewCycle(date, newSymTags);
   if (newCycleStarted) showToast('New cycle started from ' + formatDateShort(date));
   // If logging on a date before cycle start, pull it back
-  if (!newCycleStarted && date < currentCycle().startDate) {
-    currentCycle().startDate = date;
+  if (!newCycleStarted && cycle === state.cycles[0] && date < cycle.startDate) {
+    cycle.startDate = date;
   }
   saveState();
   updateSymDisplay(date);
@@ -1131,6 +1136,17 @@ function editFromDisplay() {
   saveState();
   document.getElementById('loggedDisplay').style.display='none';
   document.getElementById('logForm').style.display='block';
+}
+
+function setCycleStart(val) {
+  if (!val) return;
+  var idx = state.currentCycleIdx; var cyc = state.cycles[idx];
+  var prev = idx > 0 ? state.cycles[idx-1] : null;
+  var next = idx < state.cycles.length-1 ? state.cycles[idx+1] : null;
+  if ((prev && val <= prev.startDate) || (next && val >= next.startDate)) { showToast('Start date must fall between neighboring cycles'); render(); return; }
+  cyc.startDate = val;
+  saveState(); render(); onDateChange();
+  showToast('Cycle day 1 set to ' + formatDateShort(val));
 }
 
 function toggleOv(cycleIdx, date) {
@@ -2157,6 +2173,7 @@ function render() {
   else if (profile.confidence === 'low' && state.cycles.length < 2) periodText += ' (est.)';
 
   document.getElementById('statNextPeriod').textContent = periodText;
+  var csi = document.getElementById('cycleStartInput'); if (csi) csi.value = cycle.startDate;
   drawChart(cycle); drawRatingsChart(cycle);
   // Entry count
   document.getElementById('entryCount').textContent=tempEntries.length+' logged';
