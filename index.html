@@ -301,14 +301,10 @@ canvas{display:block;width:100%;}
       <button class="save-btn" onclick="logEntry()">Save</button>
     </div>
 
-    <!-- Daily check-in (ratings for yesterday by default) -->
+    <!-- Daily check-in (ratings save to the selected date) -->
     <div class="ci-wrap" id="ciWrap">
       <div class="ci-title">Daily check-in</div>
       <div class="ci-sub" id="ciSub">Rate how it was. Tap to save.</div>
-      <div class="ci-toggle">
-        <button id="ciModeYest" onclick="ciSetMode('yest')">Yesterday</button>
-        <button id="ciModeSame" onclick="ciSetMode('same')">This day</button>
-      </div>
       <div class="ci-label">Anxiety (0–10)</div>
       <div class="ci-scale" id="ciAnx"></div>
       <div class="ci-label">Anxiety around eating / other people (0–10)</div>
@@ -1223,10 +1219,10 @@ function toggleEntries() {
 
 
 // ─── DAILY CHECK-IN ──────────────────────────────────────────────────────────
-var ciMode = 'yest';
+var ciMode = 'same';
 function ciDate() {
   var d = getSelectedDate();
-  return ciMode === 'yest' ? addDays(d, -1) : d;
+  return d;
 }
 function ciCycleFor(date) {
   // Cycle that already holds an entry for this date, else the cycle with the latest start <= date
@@ -1268,8 +1264,6 @@ function ciSetMode(m) { ciMode = m; ciRender(); }
 function ciRender() {
   ciBuildScales();
   var date = ciDate();
-  document.getElementById('ciModeYest').className = ciMode === 'yest' ? 'on' : '';
-  document.getElementById('ciModeSame').className = ciMode === 'same' ? 'on' : '';
   document.getElementById('ciSub').textContent = 'Rating for ' + formatDate(date) + '. Tap to save.';
   var e = ciEntry(date, false); var r = (e && e.ratings) || {};
   var ids = [['ciAnx','anx'],['ciEat','eatAnx'],['ciFat','fatigue']];
