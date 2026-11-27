@@ -187,8 +187,8 @@ canvas{display:block;width:100%;}
       <div class="daily-emoji" id="dailyEmoji">🌱</div>
     </div>
     <div class="daily-insight" id="dailyInsight">—</div>
-    <div class="daily-tip-wrap">
-      <div class="daily-tip-label">Today's tip</div>
+    <div class="daily-tip-wrap" id="dailyTipWrap">
+      <div class="daily-tip-label">Your last note around here</div>
       <div class="daily-tip" id="dailyTip">—</div>
     </div>
     <div id="personalInsight" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--gold);line-height:1.55;"></div>
@@ -586,17 +586,29 @@ function addDays(dateStr, n) {
 }
 
 // ─── OVULATION ───────────────────────────────────────────────────────────────
+function isSkippedTemp(e) {
+  var t = e.tags || [];
+  return t.indexOf('disturbed') >= 0 || t.indexOf('alcohol') >= 0 || t.indexOf('sick') >= 0;
+}
+// One rule for every screen. Returned indexes point into the array passed in.
 function findOvulation(entries) {
+  var use = [];
+  for (var u = 0; u < entries.length; u++) {
+    var t = entries[u].temp;
+    if (t !== null && t !== undefined && !isSkippedTemp(entries[u])) use.push(u);
+  }
   // Manual override: an entry marked ov:true is treated as ovulation day
   for (var mi = 0; mi < entries.length; mi++) {
     if (entries[mi].ov) {
-      var conf = []; for (var mc = mi+1; mc <= mi+3 && mc < entries.length; mc++) conf.push(mc);
-      return { ovIdx: mi, confirmIdxs: conf, manual: true };
+      return { ovIdx: mi, confirmIdxs: use.filter(function(x){ return x > mi; }).slice(0,3), manual: true };
     }
   }
-  for (var i = 2; i < entries.length; i++) {
-    if (entries[i].temp > COVER_LINE && entries[i-1].temp > COVER_LINE && entries[i-2].temp > COVER_LINE)
-      return { ovIdx: Math.max(0, i-3), confirmIdxs: [i-2,i-1,i] };
+  for (var i = 2; i < use.length; i++) {
+    var a = entries[use[i-2]], b = entries[use[i-1]], c = entries[use[i]];
+    var span = Math.round((new Date(c.date+'T12:00:00') - new Date(a.date+'T12:00:00'))/86400000);
+    // 3 usable highs within 4 days (allows one missed or skipped morning)
+    if (a.temp > COVER_LINE && b.temp > COVER_LINE && c.temp > COVER_LINE && span <= 3)
+      return { ovIdx: use[Math.max(0, i-3)], confirmIdxs: [use[i-2],use[i-1],use[i]], manual: false };
   }
   return null;
 }
@@ -728,25 +740,6 @@ function getPersonalInsight(cd, phase, profile, todayTags) {
   // PMS → period prediction
   if (todayTags && todayTags.indexOf('pms') >= 0 && profile.avgPmsDaysBeforePeriod) {
     insights.push('Based on your cycles, your period typically arrives ' + profile.avgPmsDaysBeforePeriod + ' day' + (profile.avgPmsDaysBeforePeriod !== 1 ? 's' : '') + ' after PMS starts.');
-  }
-
-  // Symptom pattern nudge — if this phase matches a known symptom pattern
-  var phaseSymptoms = [];
-  for (var sym in profile.symptomPhaseMap) {
-    if (!profile.symptomPhaseMap.hasOwnProperty(sym)) continue;
-    var phases = profile.symptomPhaseMap[sym];
-    if (phases[phase] && phases[phase] >= 2) {
-      phaseSymptoms.push(sym);
-    }
-  }
-  if (phaseSymptoms.length > 0 && profile.confidence !== 'low') {
-    var symList = phaseSymptoms.slice(0, 3).join(', ');
-    insights.push('You tend to experience ' + symList + ' during this phase.');
-  }
-
-  // Luteal length awareness
-  if (phase === 'luteal' && profile.avgLutealLen && profile.confidence !== 'low') {
-    insights.push('Your average luteal phase is ' + profile.avgLutealLen + ' days.');
   }
 
   return insights.length > 0 ? insights[0] : null;
@@ -1813,7 +1806,7 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
 // ─── PATTERNS ────────────────────────────────────────────────────────────────
 function cdToPhaseLabel(cd, ovCD) {
   if(cd<=2) return 'Early menstrual'; if(cd<=5) return 'Menstrual';
-  if(!ovCD) ovCD=14;
+  if(!ovCD) ovCD=15;
   if(cd<ovCD-2) return 'Follicular'; if(cd<ovCD) return 'Late follicular';
   if(cd===ovCD) return 'Ovulation';
   if(cd<=ovCD+3) return 'Early luteal'; if(cd<=ovCD+8) return 'Mid luteal';
@@ -2049,60 +2042,88 @@ function renderPatterns(){
 }
 
 // ─── DAILY CARD ──────────────────────────────────────────────────────────────
-function getDailyContent(cd, phase) {
-  if(phase==='menstrual'){
-    if(cd===1) return {insight:"Day 1 — your period has arrived and estrogen is at its lowest. The reset has begun. It's normal to feel low-energy or need more rest today.",tip:"Heat is your best friend right now. A warm drink, heating pad, or hot shower can ease cramps more than most people realize."};
-    if(cd===2) return {insight:"Prostaglandins — the compounds that cause cramps — tend to peak on day 2. Your pain threshold is genuinely lower today, that's biology not sensitivity.",tip:"Anti-inflammatory foods like ginger, turmeric, and dark leafy greens can help. If cramps are severe, worth mentioning to your doctor."};
-    if(cd===3) return {insight:"Flow is usually heaviest around now but will start tapering. Your body is doing real work — energy expenditure actually increases slightly during menstruation.",tip:"Iron-rich foods help here: red meat, lentils, spinach, or dark chocolate. Pairing them with vitamin C helps absorption."};
-    if(cd===4) return {insight:"Estrogen is beginning to tick upward. You might notice a subtle lift in mood or energy compared to days 1-2 — that's the shift starting.",tip:"Light movement today — even a 20-minute walk — can genuinely reduce residual cramping by improving blood flow."};
-    return {insight:"You're near the end of your period. Estrogen is rising steadily and the fog of the early menstrual phase is beginning to lift.",tip:"Great day to ease back into your normal routine. Your body is ready to start building energy again."};
+// What she logged around this point in earlier cycles. Counts from ovulation once
+// it has passed in this cycle, otherwise from cycle day 1. Window is ±2 days.
+function ovDateOf(cycle) {
+  var e = cycle.entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var r = findOvulation(e); return r ? e[r.ovIdx].date : null;
+}
+function dayGap(a, b) { return Math.round((new Date(b+'T12:00:00') - new Date(a+'T12:00:00'))/86400000); }
+function buildHistory(idx, refDate) {
+  var cyc = state.cycles[idx], cd = cycleDayNum(cyc, refDate);
+  var ov = ovDateOf(cyc), past = ov ? dayGap(ov, refDate) : -1;
+  var byOv = past > 0;
+  var res = { cd: cd, byOv: byOv, dpo: past, total: 0, syms: [], ratings: {}, note: null };
+  var counts = {}, sums = {};
+  for (var i = 0; i < idx; i++) {
+    var c = state.cycles[i], cov = byOv ? ovDateOf(c) : null;
+    if (byOv && !cov) continue;
+    var nextStart = state.cycles[i+1].startDate;
+    var seen = {}, logged = false;
+    var ents = c.entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+    for (var j = 0; j < ents.length; j++) {
+      var e = ents[j];
+      if (e.date >= nextStart) continue;
+      var diff = byOv ? dayGap(cov, e.date) - past : cycleDayNum(c, e.date) - cd;
+      if (Math.abs(diff) > 2) continue;
+      logged = true;
+      (e.tags||[]).forEach(function(t){
+        if (ALL_SYMPTOMS.indexOf(t) >= 0 && !/^period|^sick$/.test(t)) seen[t] = true;
+      });
+      var r = e.ratings || {};
+      ['anx','eatAnx','fatigue'].forEach(function(k){
+        if (typeof r[k] === 'number') { sums[k] = sums[k] || []; sums[k].push(r[k]); }
+      });
+      var note = r.note || e.notes;
+      if (note) res.note = { text: note, date: e.date };
+    }
+    if (logged) { res.total++; for (var t in seen) counts[t] = (counts[t]||0) + 1; }
   }
-  if(phase==='follicular'){
-    if(cd<=7) return {insight:"Estrogen is climbing and a new follicle is growing. Energy, mood and motivation tend to rise with it — you may feel unusually capable and clear-headed.",tip:"Lean into the momentum. Great time to start something new, have a hard conversation, or push yourself at the gym."};
-    if(cd<=9) return {insight:"Rising estrogen boosts serotonin and dopamine receptors — which is why the follicular phase often feels optimistic and social. This isn't a coincidence.",tip:"Schedule things you've been putting off. Your confidence and social energy are genuinely higher right now."};
-    if(cd<=11) return {insight:"Muscle recovery is faster and more efficient right now — estrogen has an anti-inflammatory effect that helps you bounce back after hard workouts.",tip:"Great week to increase workout intensity or try something physically challenging. Your body will handle it better than usual."};
-    if(cd<=13) return {insight:"Estrogen is near its peak. Cognitive flexibility and verbal fluency are at their highest — your brain is literally running differently than it was last week.",tip:"Ideal for presentations, creative work, networking, or any situation needing quick thinking and communication."};
-    return {insight:"You're approaching the most energetic point of your cycle. Estrogen and testosterone are both rising, and your drive and focus reflect it.",tip:"Pay attention to cervical mucus becoming clearer and more stretchy — that's a sign ovulation is close."};
+  for (var s in counts) res.syms.push({ name: s, n: counts[s] });
+  res.syms.sort(function(a,b){ return b.n - a.n; });
+  for (var k in sums) res.ratings[k] = { avg: Math.round(sums[k].reduce(function(a,b){return a+b;},0)/sums[k].length*10)/10, n: sums[k].length };
+  return res;
+}
+function historyText(h) {
+  if (h.total === 0) return { main: 'No earlier entries around this point yet.', extra: '' };
+  if (h.total === 1) {
+    var one = h.syms.map(function(s){return s.name;}).slice(0,5).join(', ');
+    return { main: 'Only 1 earlier cycle has entries here, so this is not a pattern yet.' + (one ? ' That time you logged: ' + one + '.' : ''), extra: ratingText(h) };
   }
-  if(phase==='ovulation'){
-    if(cd<=15) return {insight:"Ovulation is happening or just occurred. Estrogen and testosterone are both peaking — this is your body's highest-energy moment of the entire cycle.",tip:"You may notice a one-sided twinge in your lower abdomen — that's mittelschmerz, completely normal, and a helpful confirmation of ovulation."};
-    return {insight:"Your 3 temps above the cover line have confirmed ovulation. The luteal phase begins now as progesterone starts rising to take over.",tip:"Watch for your BBT to stay consistently elevated — a sustained rise above 97.95 confirms a healthy luteal phase."};
-  }
-  if(phase==='luteal'){
-    if(cd<=18) return {insight:"Progesterone is rising steadily. You might feel calmer and slightly more inward — that's this hormone's natural effect, sometimes called the nesting phase.",tip:"Your metabolism speeds up slightly in the luteal phase — you burn a few extra calories at rest. Don't ignore hunger signals."};
-    if(cd<=21) return {insight:"Progesterone peaks in the mid-luteal phase. Sleep may feel more important, digestion can slow, and bloating is common — all normal hormonal effects.",tip:"Magnesium-rich foods like dark chocolate, almonds and leafy greens can genuinely ease bloating and improve mood this week."};
-    if(cd<=24) return {insight:"You're in the second half of your luteal phase. Energy tends to dip and emotional sensitivity can rise — your body is doing hormonal heavy lifting.",tip:"Prioritize sleep this week. Reducing caffeine and alcohol also makes a real difference to how you feel in these final cycle days."};
-    if(cd<=27) return {insight:"Late luteal phase. Hormones are beginning to shift as your cycle prepares to reset. It's normal to feel more tired or emotionally tender right now.",tip:"Be patient with yourself. Feelings may feel bigger than usual — that's hormonal, not permanent. Your period and a fresh cycle are close."};
-    return {insight:"You're in the final days of your cycle. A drop in your BBT after sustained high temps is often the first sign your period is arriving in the next day or two.",tip:"Watch your chart — a temp dip below the cover line is your body's preview that a new cycle is starting soon."};
-  }
-  return {insight:"Keep logging your temperature each morning for personalized insights.",tip:"Consistency is everything with BBT — try to measure at the same time each day after at least 3 hours of sleep."};
+  var rep = h.syms.filter(function(s){return s.n >= 2;}).slice(0,5);
+  var main = rep.length
+    ? 'Around this point you logged ' + rep.map(function(s){return s.name+' ('+s.n+' of '+h.total+' cycles)';}).join(', ') + '.'
+    : 'No symptom has repeated around this point across ' + h.total + ' earlier cycles.';
+  return { main: main, extra: ratingText(h) };
+}
+function ratingText(h) {
+  var names = { anx:'anxiety', eatAnx:'eating/social anxiety', fatigue:'fatigue' }, out = [];
+  for (var k in h.ratings) out.push(names[k]+' '+h.ratings[k].avg+'/10 ('+h.ratings[k].n+' check-in'+(h.ratings[k].n!==1?'s':'')+')');
+  return out.length ? 'Average ratings: ' + out.join(', ') + '.' : '';
 }
 
-function renderDailyCard(cd, phase, personalInsight) {
+function renderDailyCard(cd, phase, personalInsight, refDate) {
   var card=document.getElementById('dailyCard'); if(!card) return;
-  var phaseColors2={menstrual:'#d4877a',follicular:'#d4a76a',ovulation:'#9b8fc4',luteal:'#7aab8a'};
+  var phaseNames={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal'};
   var emojis={menstrual:'🌑',follicular:'🌱',ovulation:'🌕',luteal:'🍂'};
-  var phaseNames={menstrual:'Menstrual Phase',follicular:'Follicular Phase',ovulation:'Ovulation',luteal:'Luteal Phase'};
-  var color=phaseColors2[phase]||'#c9a96e';
-  var content=getDailyContent(cd,phase);
+  var color=phaseColors[phase]||'#c9a96e';
+  var h=buildHistory(state.currentCycleIdx, refDate), txt=historyText(h);
+  var estimated = phase!=='menstrual' && !ovDateOf(currentCycle());
   card.style.display='block';
   card.style.borderColor=color+'55';
   card.style.background='linear-gradient(135deg,'+color+'0a,var(--surface2))';
-  document.getElementById('dailyPhaseLabel').textContent='CD'+cd+' \u00b7 '+phaseNames[phase];
-  document.getElementById('dailyPhaseLabel').style.color=color;
+  var label=document.getElementById('dailyPhaseLabel');
+  label.textContent='CD'+cd+' · '+(h.byOv ? h.dpo+' day'+(h.dpo!==1?'s':'')+' after ovulation' : phaseNames[phase]+(estimated?' (estimated)':''));
+  label.style.color=color;
   document.getElementById('dailyEmoji').textContent=emojis[phase];
-  document.getElementById('dailyInsight').textContent=content.insight;
-  document.getElementById('dailyTip').textContent=content.tip;
-  // Personal insight from learning engine
-  var piEl = document.getElementById('personalInsight');
-  if (piEl) {
-    if (personalInsight) {
-      piEl.style.display = 'block';
-      piEl.textContent = '\u2728 ' + personalInsight;
-    } else {
-      piEl.style.display = 'none';
-    }
-  }
+  document.getElementById('dailyInsight').textContent=txt.main + (txt.extra ? ' ' + txt.extra : '');
+  var wrap=document.getElementById('dailyTipWrap');
+  if (h.note) {
+    wrap.style.display='';
+    document.getElementById('dailyTip').textContent='“'+h.note.text+'” — '+formatDate(h.note.date);
+  } else wrap.style.display='none';
+  var piEl=document.getElementById('personalInsight');
+  if (piEl) { piEl.style.display = personalInsight ? 'block' : 'none'; piEl.textContent = personalInsight ? '✨ '+personalInsight : ''; }
 }
 
 // ─── RENDER ──────────────────────────────────────────────────────────────────
@@ -2145,7 +2166,7 @@ function render() {
   }
 
   var personalInsight = getPersonalInsight(currentCD, todayPhase, profile, todayTags);
-  renderDailyCard(currentCD, todayPhase, personalInsight);
+  renderDailyCard(currentCD, todayPhase, personalInsight, cdRefDate);
 
   // Next period — use profile for smarter estimate
   var daysLeft;
@@ -2334,6 +2355,14 @@ function generateCycleChartImage(cyc, ents) {
   }
 }
 
+// Groups days that sit within 2 days of each other, e.g. "CD3–5 (4), CD24–27 (3)"
+function dayClusters(cds){
+  var d=cds.slice().sort(function(a,b){return a-b;}), out=[], start=d[0], last=d[0], n=1;
+  function push(){ out.push('CD'+start+(last!==start?'–'+last:'')+' ('+n+')'); }
+  for(var i=1;i<d.length;i++){ if(d[i]-last<=2){last=d[i];n++;} else {push();start=last=d[i];n=1;} }
+  push(); return out.join(', ');
+}
+
 function buildDoctorReport(){
   var now=new Date(); var mo=['January','February','March','April','May','June','July','August','September','October','November','December'];
   var dateStr=mo[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear();
@@ -2341,7 +2370,8 @@ function buildDoctorReport(){
   for(var ci=0;ci<state.cycles.length;ci++){
     var cyc=state.cycles[ci];
     var ents=cyc.entries.filter(function(e){return e.temp!==null&&e.temp!==undefined;}).sort(function(a,b){return a.date<b.date?-1:1;});
-    if(ents.length===0) continue;
+    var allEnts=cyc.entries.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+    if(allEnts.length===0) continue;
     var ovRes=findOvulation(ents);
     var ovCD=ovRes?cycleDayNum(cyc, ents[ovRes.ovIdx].date):null;
     if(ovCD) ovDays.push(ovCD);
@@ -2352,9 +2382,9 @@ function buildDoctorReport(){
           : (cycleDayNum(cyc, ents[ents.length-1].date)-ovCD))
       : null;
     var temps=[]; for(var ei=0;ei<ents.length;ei++) temps.push(ents[ei].temp);
-    var lo=Math.min.apply(null,temps).toFixed(2); var hi=Math.max.apply(null,temps).toFixed(2);
+    var lo=temps.length?Math.min.apply(null,temps).toFixed(2):'—'; var hi=temps.length?Math.max.apply(null,temps).toFixed(2):'—';
     var symMap={};
-    for(var ei2=0;ei2<ents.length;ei2++){var tags=ents[ei2].tags||[];for(var ti=0;ti<tags.length;ti++){if(ALL_SYMPTOMS.indexOf(tags[ti])>=0) symMap[tags[ti]]=true;}}
+    for(var ei2=0;ei2<allEnts.length;ei2++){var tags=allEnts[ei2].tags||[];for(var ti=0;ti<tags.length;ti++){if(ALL_SYMPTOMS.indexOf(tags[ti])>=0) symMap[tags[ti]]=true;}}
     var symList=[]; for(var ss in symMap){if(symMap.hasOwnProperty(ss)) symList.push(ss);}
 
     // Generate chart image for this cycle
@@ -2367,14 +2397,14 @@ function buildDoctorReport(){
       +'<span><span style="display:inline-block;width:10px;height:10px;background:#fef3e4;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Follicular</span>'
       +'<span><span style="display:inline-block;width:10px;height:10px;background:#ede9f8;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Ovulation</span>'
       +'<span><span style="display:inline-block;width:10px;height:10px;background:#e4f0e8;border:1px solid #ddd;margin-right:3px;vertical-align:middle;"></span>Luteal</span>'
-      +'<span style="margin-left:auto;">--- 97.95°F threshold &nbsp; <span style="color:#7b5cb0;">OV = ovulation confirmed</span></span>'
+      +'<span style="margin-left:auto;">--- 97.95°F threshold &nbsp; <span style="color:#7b5cb0;">OV = ovulation (estimated or set manually)</span></span>'
       +'</div>';
 
     cycleRows += '<div style="margin-bottom:32px;page-break-inside:avoid;">';
     cycleRows += '<h3 style="font-size:14px;color:#2a1f14;margin:0 0 6px;">Cycle '+(ci+1)+' &nbsp;<span style="font-weight:normal;color:#888;font-size:12px;">Started '+formatDate(cyc.startDate)+'</span></h3>';
     cycleRows += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;"><tr>';
     cycleRows += '<td style="padding:4px 10px 4px 0;color:#555;">Days logged: <strong>'+ents.length+'</strong></td>';
-    cycleRows += '<td style="padding:4px 10px;">Ovulation: <strong>'+(ovCD?'CD'+ovCD:'Not confirmed')+'</strong></td>';
+    cycleRows += '<td style="padding:4px 10px;">Ovulation: <strong>'+(ovCD?'CD'+ovCD+(ovRes.manual?' (set manually)':''):'Not confirmed')+'</strong></td>';
     cycleRows += '<td style="padding:4px 10px;">Luteal phase: <strong>'+(luteal!==null?luteal+' days':'—')+'</strong></td>';
     cycleRows += '<td style="padding:4px 0;">Temp range: <strong>'+lo+' – '+hi+'°F</strong></td>';
     cycleRows += '</tr></table>';
@@ -2390,7 +2420,11 @@ function buildDoctorReport(){
     for(var ei3=0;ei3<e2.length;ei3++){var tags2=e2[ei3].tags||[];var cd2=cycleDayNum(c2,e2[ei3].date);for(var ti2=0;ti2<tags2.length;ti2++){if(symData.hasOwnProperty(tags2[ti2])) symData[tags2[ti2]].push(cd2);}}
   }
   var patternRows='';
-  for(var sym in symData){if(symData.hasOwnProperty(sym)&&symData[sym].length>0){var cds=symData[sym];var sum=0;for(var j=0;j<cds.length;j++) sum+=cds[j];var avg=Math.round(sum/cds.length);patternRows+='<tr><td>'+sym.charAt(0).toUpperCase()+sym.slice(1)+'</td><td>'+cds.length+'</td><td>CD'+avg+'</td><td>CD'+Math.min.apply(null,cds)+' – CD'+Math.max.apply(null,cds)+'</td></tr>';}}
+  for(var sym in symData){if(symData.hasOwnProperty(sym)&&symData[sym].length>0){
+    var cds=symData[sym], cycSet={};
+    for(var ci3=0;ci3<state.cycles.length;ci3++){ if(state.cycles[ci3].entries.some(function(e){return (e.tags||[]).indexOf(sym)>=0;})) cycSet[ci3+1]=true; }
+    patternRows+='<tr><td>'+sym.charAt(0).toUpperCase()+sym.slice(1)+'</td><td>'+cds.length+'</td><td>'+Object.keys(cycSet).join(', ')+'</td><td>'+dayClusters(cds)+'</td></tr>';
+  }}
   var ratingRows='';
   var coughNm=['None','Mild','Bad'];
   for(var rc=0;rc<state.cycles.length;rc++){
@@ -2407,9 +2441,9 @@ function buildDoctorReport(){
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div><h1>BBT Cycle Report</h1><div class="subtitle">Generated '+dateStr+' &nbsp;&middot;&nbsp; '+state.cycles.length+' cycle'+(state.cycles.length!==1?'s':'')+' tracked &nbsp;&middot;&nbsp; Prepared with Lumin</div></div><button class="no-print" onclick="window.print()" style="background:#8a5c2a;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:12px;cursor:pointer;margin-top:8px;flex-shrink:0;">Print / Save PDF</button></div>'
     +'<h2>Overview</h2><div><div class="sum-box"><div class="sum-val">'+state.cycles.length+'</div><div class="sum-label">Cycles tracked</div></div><div class="sum-box"><div class="sum-val">'+(ovDays.length?ovDays.length+'/'+state.cycles.length:'0')+'</div><div class="sum-label">OV confirmed</div></div><div class="sum-box"><div class="sum-val">'+(avgOv!=='N/A'?'CD'+avgOv:avgOv)+'</div><div class="sum-label">Avg ovulation day</div></div></div>'
     +'<h2>Cycle Charts</h2>'+cycleRows
-    +'<h2>Symptom Patterns</h2>'+(patternRows?'<table><thead><tr><th>Symptom</th><th>Occurrences</th><th>Avg cycle day</th><th>Range</th></tr></thead><tbody>'+patternRows+'</tbody></table>':'<p class="note">No symptoms logged.</p>')
+    +'<h2>Symptom Patterns</h2>'+(patternRows?'<table><thead><tr><th>Symptom</th><th>Occurrences</th><th>In cycles</th><th>Cycle days (times)</th></tr></thead><tbody>'+patternRows+'</tbody></table>':'<p class="note">No symptoms logged.</p>')
     +'<h2>Daily Check-in Ratings (0–10)</h2>'+ratingsHtml
-    +'<h2>Clinical Notes</h2><p class="note">Basal body temperature logged daily upon waking. Ovulation confirmed when 3 consecutive temperatures exceed the 97.95°F threshold (cover line). Data is self-tracked and should be interpreted in a clinical context. Tracked using Lumin BBT app.</p></body></html>';
+    +'<h2>Clinical Notes</h2><p class="note">Basal body temperature logged daily upon waking. Ovulation is estimated when 3 temperatures within 4 days exceed the 97.95°F threshold, excluding mornings tagged disturbed sleep, alcohol or sick; entries marked "set manually" were chosen by the user. Data is self-tracked and should be interpreted in a clinical context. Tracked using Lumin BBT app.</p></body></html>';
 }
 
 // ─── ONBOARDING ──────────────────────────────────────────────────────────────
