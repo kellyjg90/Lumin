@@ -224,6 +224,7 @@ canvas{display:block;width:100%;}
         <span id="cycleStartHint" style="color:var(--text-dim);"></span>
       </div>
       <canvas id="bbtChart" height="220"></canvas>
+      <div style="text-align:center;margin:6px 0;"><button class="action-btn" id="unclearBtn" onclick="toggleUnclear()">Mark ovulation unclear</button></div>
       <div id="bbtChartTapInfo" style="font-size:10px;color:#4a3f36;text-align:center;margin-top:4px;height:14px;">Tap a point to see its date</div>
       <div class="phase-legend-row">
         <div class="pl-item"><div class="pl-dot" style="background:rgba(122,171,138,0.4);border:1px solid #7aab8a;border-radius:2px;width:9px;height:7px;"></div>Fertile window</div>
@@ -611,8 +612,18 @@ function isSkippedTemp(e) {
   var t = e.tags || [];
   return t.indexOf('disturbed') >= 0 || t.indexOf('alcohol') >= 0 || t.indexOf('sick') >= 0;
 }
+// A cycle marked unclear gets no ovulation day anywhere, so no luteal length either
+function isUnclear(entries) {
+  return entries.length > 0 && state.cycles.some(function(c){ return c.unclear && c.entries.indexOf(entries[0]) >= 0; });
+}
+function toggleUnclear() {
+  var c = currentCycle(); c.unclear = !c.unclear;
+  saveState(); render();
+  showToast(c.unclear ? 'Ovulation marked unclear for this cycle' : 'Unclear mark removed');
+}
 // One rule for every screen. Returned indexes point into the array passed in.
 function findOvulation(entries) {
+  if (isUnclear(entries)) return null;
   var use = [];
   for (var u = 0; u < entries.length; u++) {
     var t = entries[u].temp;
@@ -1615,7 +1626,7 @@ function drawOverview() {
 
     // Stats line — use actual cycle days, not array indices, so gaps in logging don't distort these
     var ovCDReal = ovRes ? cycleDayNum(vc.cycle, vc.ents[ovRes.ovIdx].date) : null;
-    var ovStr = ovCDReal ? 'OV CD'+ovCDReal : 'OV not confirmed';
+    var ovStr = ovCDReal ? 'OV CD'+ovCDReal : (vc.cycle.unclear ? 'OV unclear' : 'OV not confirmed');
     var lastCDForCycle = cycleDayNum(vc.cycle, vc.ents[vc.ents.length-1].date);
     var nextCycleForThis = (vc.idx < state.cycles.length - 1) ? state.cycles[vc.idx+1] : null;
     var lutealDays = null;
@@ -2094,6 +2105,7 @@ function render() {
 
   document.getElementById('statNextPeriod').textContent = periodText;
   var csi = document.getElementById('cycleStartInput'); if (csi) csi.value = cycle.startDate;
+  var ub = document.getElementById('unclearBtn'); if (ub) ub.textContent = cycle.unclear ? '\u2713 Ovulation unclear (tap to undo)' : 'Mark ovulation unclear';
   drawChart(cycle); drawRatingsChart(cycle);
   // Entry count
   document.getElementById('entryCount').textContent=tempEntries.length+' logged';
@@ -2227,7 +2239,7 @@ function generateCycleChartImage(cyc, ents) {
     for(var pi=0;pi<ents.length;pi++){
       var cd = cycleDayNum(cyc, ents[pi].date);
       var ovCD = (ovIdx>=0) ? cycleDayNum(cyc, ents[ovIdx].date) : null;
-      var phase = getPhase(cd, ovCD);
+      var phase = cyc.unclear && cd > 5 ? 'unclear' : getPhase(cd, ovCD);
       var x1 = (pi===0)?PAD.left:(tx(pi-1)+tx(pi))/2;
       var x2 = (pi===ents.length-1)?PAD.left+cw:(tx(pi)+tx(pi+1))/2;
       ctx.fillStyle = phaseColorsReport[phase]||'#f9f9f9';
@@ -2342,7 +2354,7 @@ function buildDoctorReport(){
     cycleRows += '<h3 style="font-size:14px;color:#2a1f14;margin:0 0 6px;">Cycle '+(ci+1)+' &nbsp;<span style="font-weight:normal;color:#888;font-size:12px;">Started '+formatDate(cyc.startDate)+'</span></h3>';
     cycleRows += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;"><tr>';
     cycleRows += '<td style="padding:4px 10px 4px 0;color:#555;">Days logged: <strong>'+ents.length+'</strong></td>';
-    cycleRows += '<td style="padding:4px 10px;">Ovulation: <strong>'+(ovCD?'CD'+ovCD+(ovRes.manual?' (set manually)':''):'Not confirmed')+'</strong></td>';
+    cycleRows += '<td style="padding:4px 10px;">Ovulation: <strong>'+(ovCD?'CD'+ovCD+(ovRes.manual?' (set manually)':''):(cyc.unclear?'Unclear (marked by user)':'Not confirmed'))+'</strong></td>';
     cycleRows += '<td style="padding:4px 10px;">Luteal phase: <strong>'+(luteal!==null?luteal+' days':'—')+'</strong></td>';
     cycleRows += '<td style="padding:4px 0;">Temp range: <strong>'+lo+' – '+hi+'°F</strong></td>';
     cycleRows += '</tr></table>';
