@@ -516,6 +516,14 @@ function loadState() {
       var p = JSON.parse(raw);
       if (p && p.cycles && p.cycles.length > 0) {
         state = migrateState(p);
+        if (hasDuplicateDays()) {
+          // Keep an untouched copy before merging; skip the merge if it can't be saved
+          try {
+            if (!localStorage.getItem(STORAGE_KEY+'_backup_premerge')) localStorage.setItem(STORAGE_KEY+'_backup_premerge', raw);
+            regroupEntries();
+            saveState();
+          } catch(e2) {}
+        }
         return;
       }
     }
@@ -785,6 +793,7 @@ function startNewCycle() {
   var newCycle = newCycleObj(startDate);
   state.cycles.push(newCycle);
   state.cycles.sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
+  regroupEntries();
   for (var i=0;i<state.cycles.length;i++) { if(state.cycles[i].id===newCycle.id){state.currentCycleIdx=i;break;} }
   saveState();
   closeCyclesSheet();
@@ -1060,6 +1069,7 @@ function checkAutoNewCycle(date, tags) {
   var newCycle = newCycleObj(date);
   state.cycles.push(newCycle);
   state.cycles.sort(function(a,b){ return a.startDate < b.startDate ? -1 : 1; });
+  regroupEntries();
   // Switch to it
   for (var k = 0; k < state.cycles.length; k++) {
     if (state.cycles[k].id === newCycle.id) { state.currentCycleIdx = k; break; }
@@ -1128,12 +1138,36 @@ function editFromDisplay() {
   document.getElementById('logForm').style.display='block';
 }
 
+// Two saved copies of one day become one. Nothing logged is thrown away.
+function mergeSameDay(list) {
+  var out = [];
+  list.forEach(function(e){
+    var k = out.length ? out[out.length-1] : null;
+    if (!k || k.date !== e.date) { out.push(e); return; }
+    var tags = (k.tags||[]).slice();
+    (e.tags||[]).forEach(function(t){ if (tags.indexOf(t) < 0) tags.push(t); });
+    k.tags = tags;
+    var notes = k.notes || '';
+    if (e.notes && notes.indexOf(e.notes) < 0) notes = notes ? notes+' | '+e.notes : e.notes;
+    if (k.temp === null || k.temp === undefined) k.temp = e.temp;
+    else if (e.temp !== null && e.temp !== undefined && e.temp !== k.temp) notes = (notes ? notes+' | ' : '')+'Other reading: '+e.temp;
+    k.notes = notes;
+    if (e.ratings) { k.ratings = k.ratings || {}; for (var r in e.ratings) if (k.ratings[r] === undefined) k.ratings[r] = e.ratings[r]; }
+    if (e.ov) k.ov = true;
+  });
+  return out;
+}
+function hasDuplicateDays() {
+  var seen = {};
+  return state.cycles.some(function(c){ return c.entries.some(function(e){ if (seen[e.date]) return true; seen[e.date] = true; return false; }); });
+}
+
 // After a start date changes, file every day under the cycle its date falls in
 function regroupEntries() {
   var all = [];
   state.cycles.forEach(function(c){ all = all.concat(c.entries); c.entries = []; });
   all.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; });
-  all.forEach(function(e){
+  mergeSameDay(all).forEach(function(e){
     var home = state.cycles[0];
     state.cycles.forEach(function(c){ if (c.startDate <= e.date) home = c; });
     home.entries.push(e);
