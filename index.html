@@ -8,7 +8,7 @@
 <style>
 :root {
   --bg:#0d0a08;--surface:#15110e;--surface2:#1e1812;--border:#2e2520;
-  --text:#f0e8df;--text-dim:#8a7b6e;--text-muted:#4a3f36;
+  --text:#f0e8df;--text-dim:#b3a394;--text-muted:#9a8b7d;
   --gold:#c9a96e;--gold-dim:#7a5f3a;--rose:#d4877a;--sage:#7aab8a;
   --lavender:#9b8fc4;--amber:#d4a76a;--sky:#7aabc9;
 }
@@ -157,7 +157,7 @@ canvas{display:block;width:100%;}
 <!-- LOADING SCREEN -->
 <div id="loadingScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0d0a08;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;">
   <div style="font-family:'Playfair Display',serif;font-size:32px;color:#c9a96e;font-style:italic;margin-bottom:12px;">Lumin</div>
-  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#4a3f36;letter-spacing:0.14em;text-transform:uppercase;">Loading your data...</div>
+  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#9a8b7d;letter-spacing:0.14em;text-transform:uppercase;">Loading your data...</div>
 </div>
 
 <!-- APP ROOT -->
@@ -225,7 +225,7 @@ canvas{display:block;width:100%;}
       </div>
       <canvas id="bbtChart" height="220"></canvas>
       <div style="text-align:center;margin:6px 0;"><button class="action-btn" id="unclearBtn" onclick="toggleUnclear()">Mark ovulation unclear</button></div>
-      <div id="bbtChartTapInfo" style="font-size:10px;color:#4a3f36;text-align:center;margin-top:4px;height:14px;">Tap a point to see its date</div>
+      <div id="bbtChartTapInfo" style="font-size:10px;color:#9a8b7d;text-align:center;margin-top:4px;height:14px;">Tap a point to see its date</div>
       <div class="phase-legend-row">
         <div class="pl-item"><div class="pl-dot" style="background:rgba(122,171,138,0.4);border:1px solid #7aab8a;border-radius:2px;width:9px;height:7px;"></div>Fertile window</div>
         <div class="pl-item" style="margin-left:8px;"><div style="width:18px;height:1px;background:#c9a96e;border-top:1px dashed #c9a96e;display:inline-block;vertical-align:middle;margin-right:4px;"></div>Cover line</div>
@@ -475,12 +475,12 @@ canvas{display:block;width:100%;}
     <div style="font-size:13px;color:#8a7b6e;margin-bottom:40px;line-height:1.6;">Your personal BBT cycle tracker.</div>
 
     <div style="font-family:'Playfair Display',serif;font-size:22px;color:#f0e8df;margin-bottom:8px;">When did your last period start?</div>
-    <div style="font-size:12px;color:#4a3f36;margin-bottom:20px;">This is Day 1 of your current cycle.</div>
+    <div style="font-size:12px;color:#9a8b7d;margin-bottom:20px;">This is Day 1 of your current cycle.</div>
     <input type="date" id="onboardingDate" style="background:#1e1812;border:1px solid #2e2520;border-radius:10px;color:#f0e8df;font-family:'DM Mono',monospace;font-size:14px;padding:14px 16px;width:100%;outline:none;color-scheme:dark;-webkit-appearance:none;margin-bottom:32px;">
 
     <button onclick="finishOnboarding()" style="width:100%;background:linear-gradient(135deg,#7a5f3a,#6a4f2a);border:1px solid #7a5f3a;border-radius:12px;color:#c9a96e;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;padding:16px;cursor:pointer;">Start Tracking</button>
 
-    <div style="font-size:10px;color:#4a3f36;text-align:center;margin-top:20px;line-height:1.6;">Lumin is a wellness tool for body literacy.<br>Not medical advice or a contraceptive device.</div>
+    <div style="font-size:10px;color:#9a8b7d;text-align:center;margin-top:20px;line-height:1.6;">Lumin is a wellness tool for body literacy.<br>Not medical advice or a contraceptive device.</div>
   </div>
 </div>
 
@@ -663,12 +663,12 @@ function coverLineFor(entries) {
 
 function getPhase(cd, ovCD) {
   if (cd <= 5) return 'menstrual';
-  var assumedOv = ovCD || 15; // default to CD15 if no confirmed OV
-  if (cd < assumedOv) return 'follicular';
-  if (cd === assumedOv) return 'ovulation';
+  if (!ovCD) return 'unclear'; // no ovulation found: do not guess a phase
+  if (cd < ovCD) return 'follicular';
+  if (cd === ovCD) return 'ovulation';
   return 'luteal';
 }
-var phaseColors = { menstrual:'#d4877a', follicular:'#d4a76a', ovulation:'#9b8fc4', luteal:'#7aab8a' };
+var phaseColors = { menstrual:'#d4877a', follicular:'#d4a76a', ovulation:'#9b8fc4', luteal:'#7aab8a', unclear:'#9a8b7d' };
 
 function getFertileWindow() {
   var ovDays = [];
@@ -1426,7 +1426,7 @@ function drawRatingsChart(cycle) {
   var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
   ctx.fillStyle = '#15110e'; ctx.fillRect(0, 0, W, H);
   var rated = cycle.entries.filter(function(e){ return e.ratings && (e.ratings.anx !== undefined || e.ratings.eatAnx !== undefined || e.ratings.fatigue !== undefined); });
-  if (!rated.length) { ctx.fillStyle = '#4a3f36'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText('Check-in ratings will show here', W/2, H/2); return; }
+  if (!rated.length) { ctx.fillStyle = '#9a8b7d'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText('Check-in ratings will show here', W/2, H/2); return; }
   var PAD = { top: 10, right: 12, bottom: 22, left: 28 };
   var cw = W - PAD.left - PAD.right, ch = H - PAD.top - PAD.bottom;
   var maxCD = 1, i;
@@ -1472,7 +1472,7 @@ function drawChart(cycle) {
   var PAD={top:28,right:20,bottom:34,left:44};
   var cw=W-PAD.left-PAD.right; var ch=H-PAD.top-PAD.bottom;
   ctx.fillStyle='#15110e'; ctx.fillRect(0,0,W,H);
-  if(tempEntries.length===0){ctx.fillStyle='#4a3f36';ctx.font='12px serif';ctx.textAlign='center';ctx.fillText('Tap + Log to add your first temperature',W/2,H/2);return;}
+  if(tempEntries.length===0){ctx.fillStyle='#9a8b7d';ctx.font='12px serif';ctx.textAlign='center';ctx.fillText('Tap + Log to add your first temperature',W/2,H/2);return;}
   var temps=[]; for(var ti=0;ti<tempEntries.length;ti++) temps.push(tempEntries[ti].temp);
   var minT=Math.max(96,Math.min.apply(null,temps)-0.3); var maxT=Math.min(99.5,Math.max.apply(null,temps)+0.4);
   var coverLine=coverLineFor(tempEntries);
@@ -1505,7 +1505,7 @@ function drawChart(cycle) {
   }
 
   // Phase labels at top of chart
-  var phaseShortNames={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal'};
+  var phaseShortNames={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal',unclear:'Not confirmed'};
   ctx.font='bold 8px sans-serif'; ctx.textBaseline='top';
   for(var ri=0;ri<phaseRegions.length;ri++){
     var reg=phaseRegions[ri];
@@ -1528,7 +1528,7 @@ function drawChart(cycle) {
     var gy=ty(gt);
     if(gy>=PAD.top&&gy<=PAD.top+ch){
       ctx.beginPath();ctx.moveTo(PAD.left,gy);ctx.lineTo(PAD.left+cw,gy);ctx.stroke();
-      ctx.fillStyle='#6a5a50'; ctx.font='9px monospace'; ctx.textAlign='right';
+      ctx.fillStyle='#9a8b7d'; ctx.font='9px monospace'; ctx.textAlign='right';
       ctx.fillText(gt.toFixed(1),PAD.left-4,gy+3);
     }
     gt=Math.round((gt+0.2)*10)/10;
@@ -1586,7 +1586,7 @@ function drawChart(cycle) {
     ctx.fillStyle='#0d0a08'; ctx.textAlign='center'; ctx.fillText('OV',ox,PAD.top+lh-3);
   }
   // X axis CD labels
-  ctx.fillStyle='#4a3f36'; ctx.font='9px monospace'; ctx.textAlign='center';
+  ctx.fillStyle='#9a8b7d'; ctx.font='9px monospace'; ctx.textAlign='center';
   var lastX=-100;
   for(var xi=0;xi<tempEntries.length;xi++){
     if(tx(xi)-lastX<30) continue; // skip labels that would overlap
@@ -1674,7 +1674,7 @@ function drawOverview() {
     html += '</div>';
     // Canvas
     html += '<canvas id="miniChart_'+vc.idx+'" height="130" style="display:block;width:100%;border-radius:8px;background:#15110e;"></canvas>';
-    html += '<div id="miniChartTapInfo_'+vc.idx+'" style="font-size:9px;color:#4a3f36;text-align:center;margin-top:3px;height:12px;">Tap a point to see its date</div>';
+    html += '<div id="miniChartTapInfo_'+vc.idx+'" style="font-size:9px;color:#9a8b7d;text-align:center;margin-top:3px;height:12px;">Tap a point to see its date</div>';
     html += '</div>';
   }
 
@@ -1817,7 +1817,7 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
   }
 
   // Y axis labels (just min, cover line, max)
-  ctx.fillStyle = '#4a3f36'; ctx.font = '7px monospace'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#9a8b7d'; ctx.font = '7px monospace'; ctx.textAlign = 'right';
   ctx.fillText(globalMin.toFixed(1), PAD.left-3, PAD.top+ch+1);
   ctx.fillText(globalMax.toFixed(1), PAD.left-3, PAD.top+5);
 
@@ -1863,7 +1863,7 @@ function drawMiniChart(vc, globalMin, globalMax, globalMaxLen) {
 
   // X axis: just first and last CD
   // X axis — CD1 always at left, show last actual entry and max length marker
-  ctx.fillStyle = '#4a3f36'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#9a8b7d'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
   ctx.fillText('CD'+cycleDayNum(vc.cycle, ents[0].date), tx(0), PAD.top+ch+14);
   // Show last logged day for this cycle (actual cycle day, not entry count — they differ when days were missed)
   var lastCD = cycleDayNum(vc.cycle, ents[ents.length-1].date);
@@ -2039,16 +2039,15 @@ function ratingText(h) {
 
 function renderDailyCard(cd, phase, personalInsight, refDate) {
   var card=document.getElementById('dailyCard'); if(!card) return;
-  var phaseNames={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal'};
-  var emojis={menstrual:'🌑',follicular:'🌱',ovulation:'🌕',luteal:'🍂'};
+  var phaseNames={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal',unclear:'Not confirmed'};
+  var emojis={menstrual:'🌑',follicular:'🌱',ovulation:'🌕',luteal:'🍂',unclear:'🌙'};
   var color=phaseColors[phase]||'#c9a96e';
   var h=buildHistory(state.currentCycleIdx, refDate), txt=historyText(h);
-  var estimated = phase!=='menstrual' && !ovDateOf(currentCycle());
   card.style.display='block';
   card.style.borderColor=color+'55';
   card.style.background='linear-gradient(135deg,'+color+'0a,var(--surface2))';
   var label=document.getElementById('dailyPhaseLabel');
-  label.textContent='CD'+cd+' · '+(h.byOv ? h.dpo+' day'+(h.dpo!==1?'s':'')+' after ovulation' : phaseNames[phase]+(estimated?' (estimated)':''));
+  label.textContent='CD'+cd+' · '+(h.byOv ? h.dpo+' day'+(h.dpo!==1?'s':'')+' after ovulation' : (phase==='unclear'?'Ovulation not confirmed':phaseNames[phase]));
   label.style.color=color;
   document.getElementById('dailyEmoji').textContent=emojis[phase];
   document.getElementById('dailyInsight').textContent=txt.main + (txt.extra ? ' ' + txt.extra : '');
@@ -2133,7 +2132,7 @@ function render() {
   if(tempEntries.length===0){logBody.innerHTML='<div class="empty-state">No entries yet. Tap + Log to start.</div>';return;}
   var reversed=tempEntries.slice().reverse();
   var ovCD2=(ovIdx>=0)?cycleDayNum(cycle,tempEntries[ovIdx].date):null;
-  var phaseLabels={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal'};
+  var phaseLabels={menstrual:'Menstrual',follicular:'Follicular',ovulation:'Ovulation',luteal:'Luteal',unclear:'Not confirmed'};
   var cidx=state.currentCycleIdx;
   var html='<table class="log-table"><thead><tr><th>Date</th><th>CD</th><th>Temp</th><th>Phase</th><th>Tags</th><th></th></tr></thead><tbody>';
   for(var ri=0;ri<reversed.length;ri++){
@@ -2256,7 +2255,7 @@ function generateCycleChartImage(cyc, ents) {
     for(var pi=0;pi<ents.length;pi++){
       var cd = cycleDayNum(cyc, ents[pi].date);
       var ovCD = (ovIdx>=0) ? cycleDayNum(cyc, ents[ovIdx].date) : null;
-      var phase = cyc.unclear && cd > 5 ? 'unclear' : getPhase(cd, ovCD);
+      var phase = getPhase(cd, ovCD);
       var x1 = (pi===0)?PAD.left:(tx(pi-1)+tx(pi))/2;
       var x2 = (pi===ents.length-1)?PAD.left+cw:(tx(pi)+tx(pi+1))/2;
       ctx.fillStyle = phaseColorsReport[phase]||'#f9f9f9';
