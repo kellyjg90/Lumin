@@ -1934,6 +1934,18 @@ function capName(n) { if (n === 'pms') return 'PMS'; return n.charAt(0).toUpperC
 
 var PAT_SHORT = ['During period','After period','Around ovulation','After ovulation','Before period'];
 
+// Headline for one symptom: the one or two windows that clearly stand out.
+// Windows with under 3 logged cycles are left out.
+var PAT_WORDS = ['during your period','after your period','around ovulation','after ovulation','before your period'];
+function patternSummary(counts, logged) {
+  var share = counts.map(function(c,i){ return logged[i] >= 3 ? c/logged[i] : -1; });
+  var top = Math.max.apply(null, share);
+  var lead = [], next = 0;
+  share.forEach(function(v,i){ if (v >= 0 && top - v <= 0.1) lead.push(i); else if (v > next) next = v; });
+  if (top < 0.5 || lead.length > 2 || top - next < 0.2) return 'No clear timing';
+  return 'Most often ' + lead.map(function(i){ return PAT_WORDS[i]; }).join(' and ');
+}
+
 function renderPatterns(){
   var body = document.getElementById('patternsBody');
   var t = buildPhaseTable();
@@ -1945,7 +1957,8 @@ function renderPatterns(){
   var html = '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);line-height:1.6;">How often you had it at each point in your cycle.</div>';
   rows.forEach(function(r){
     html += '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">';
-    html += '<div style="font-size:15px;color:var(--text);margin-bottom:8px;">' + capName(r.name) + '</div>';
+    html += '<div style="font-size:15px;color:var(--text);">' + capName(r.name) + '</div>';
+    html += '<div style="font-size:12px;color:var(--accent,#d4a76a);margin:2px 0 8px;">' + patternSummary(r.counts, t.logged) + '</div>';
     for (var i = 0; i < 5; i++) {
       if (t.logged[i] < 3) continue; // hidden until there is enough logged to say
       var share = r.counts[i] / t.logged[i];
