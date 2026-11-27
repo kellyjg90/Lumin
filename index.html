@@ -1451,7 +1451,8 @@ function drawChart(cycle) {
   // Round min/max to nearest 0.2
   minT=Math.floor(minT*5)/5; maxT=Math.ceil(maxT*5)/5;
   var tRange=maxT-minT; if(tRange===0) tRange=1;
-  function tx(idx){if(tempEntries.length<=1) return PAD.left+cw/2; return PAD.left+(idx/(tempEntries.length-1))*cw;}
+  var d0=cycleDayNum(cycle,tempEntries[0].date), span=cycleDayNum(cycle,tempEntries[tempEntries.length-1].date)-d0;
+  function tx(idx){if(span<=0) return PAD.left+cw/2; return PAD.left+((cycleDayNum(cycle,tempEntries[idx].date)-d0)/span)*cw;}
   function ty(t){return PAD.top+ch-((t-minT)/tRange)*ch;}
   var ovResult=findOvulation(tempEntries); var ovIdx=ovResult?ovResult.ovIdx:-1; var confirmIdxs=ovResult?ovResult.confirmIdxs:[];
   var fw=getFertileWindow();
@@ -1556,9 +1557,11 @@ function drawChart(cycle) {
   }
   // X axis CD labels
   ctx.fillStyle='#4a3f36'; ctx.font='9px monospace'; ctx.textAlign='center';
+  var lastX=-100;
   for(var xi=0;xi<tempEntries.length;xi++){
-    if(tempEntries.length<=15||xi%Math.ceil(tempEntries.length/15)===0)
-      ctx.fillText('CD'+cycleDayNum(cycle,tempEntries[xi].date),tx(xi),PAD.top+ch+14);
+    if(tx(xi)-lastX<30) continue; // skip labels that would overlap
+    lastX=tx(xi);
+    ctx.fillText('CD'+cycleDayNum(cycle,tempEntries[xi].date),lastX,PAD.top+ch+14);
   }
 
   // Record point positions for tap-to-see-date, and wire up the tap handler
@@ -2211,7 +2214,8 @@ function generateCycleChartImage(cyc, ents) {
     minT = Math.floor(minT*5)/5; maxT = Math.ceil(maxT*5)/5;
     var tRange = maxT-minT; if(tRange===0) tRange=1;
 
-    function tx(i){ return ents.length<=1 ? PAD.left+cw/2 : PAD.left+(i/(ents.length-1))*cw; }
+    var d0 = cycleDayNum(cyc, ents[0].date), span = cycleDayNum(cyc, ents[ents.length-1].date) - d0;
+    function tx(i){ return span<=0 ? PAD.left+cw/2 : PAD.left+((cycleDayNum(cyc, ents[i].date)-d0)/span)*cw; }
     function ty(t){ return PAD.top+ch-((t-minT)/tRange)*ch; }
 
     var ovRes = findOvulation(ents);
@@ -2284,9 +2288,11 @@ function generateCycleChartImage(cyc, ents) {
 
     // X axis CD labels
     ctx.fillStyle='#999';ctx.font='8px monospace';ctx.textAlign='center';
+    var lastX=-100;
     for(var xi=0;xi<ents.length;xi++){
-      if(ents.length<=20||xi%Math.ceil(ents.length/20)===0)
-        ctx.fillText('CD'+cycleDayNum(cyc,ents[xi].date),tx(xi),PAD.top+ch+16);
+      if(tx(xi)-lastX<28) continue;
+      lastX=tx(xi);
+      ctx.fillText('CD'+cycleDayNum(cyc,ents[xi].date),lastX,PAD.top+ch+16);
     }
 
     return canvas.toDataURL('image/png');
