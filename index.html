@@ -1947,14 +1947,15 @@ function renderPatterns(){
     html += '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">';
     html += '<div style="font-size:15px;color:var(--text);margin-bottom:8px;">' + capName(r.name) + '</div>';
     for (var i = 0; i < 5; i++) {
-      var share = t.logged[i] >= 3 ? r.counts[i] / t.logged[i] : -1;
+      if (t.logged[i] < 3) continue; // hidden until there is enough logged to say
+      var share = r.counts[i] / t.logged[i];
       var level = share >= 0.7 ? 3 : share >= 0.35 ? 2 : share > 0 ? 1 : 0;
-      var word = share < 0 ? 'Not enough yet' : ['Never','Rarely','Sometimes','Usually'][level];
+      var word = ['Never','Rarely','Sometimes','Usually'][level];
       var dots = '';
       for (var d = 0; d < 3; d++) dots += '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;border:1px solid ' + PHASE_DOTS[i] + ';background:' + (d < level ? PHASE_DOTS[i] : 'transparent') + ';"></span>';
       html += '<div style="display:flex;align-items:center;font-size:13px;line-height:2;">';
       html += '<span style="flex:1;color:var(--text);">' + PAT_SHORT[i] + '</span>';
-      html += '<span style="width:52px;">' + (share < 0 ? '' : dots) + '</span>';
+      html += '<span style="width:52px;">' + dots + '</span>';
       html += '<span style="width:104px;text-align:right;color:var(--text);opacity:' + (level === 3 ? 1 : 0.6) + ';">' + word + '</span></div>';
     }
     html += '</div>';
