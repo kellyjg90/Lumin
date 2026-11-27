@@ -644,6 +644,34 @@ function findOvulation(entries) {
   }
   return null;
 }
+// Preview only. Each cycle is judged against its own six earlier temps:
+// 3 highs above the highest of the 6, the 3rd by 0.36°F (0.2°C), or else a 4th high.
+function findShiftOwnBaseline(entries) {
+  var use = entries.filter(function(e){ return e.temp !== null && e.temp !== undefined && !isSkippedTemp(e); });
+  var gap = function(a,b){ return Math.round((new Date(b.date+'T12:00:00')-new Date(a.date+'T12:00:00'))/86400000); };
+  for (var i = 6; i + 2 < use.length; i++) {
+    var line = Math.max.apply(null, use.slice(i-6,i).map(function(e){ return e.temp; }));
+    var a = use[i], b = use[i+1], c = use[i+2], d = use[i+3];
+    if (!(a.temp > line && b.temp > line && c.temp > line) || gap(a,c) > 3) continue;
+    var strong = c.temp - line >= 0.359;
+    var fourth = d && d.temp > line && gap(a,d) <= 4;
+    if (strong || fourth) return { date: use[i-1].date, line: line };
+  }
+  return null;
+}
+function compareCoverLine() {
+  var out = document.getElementById('coverCompare'); if (!out) return;
+  var html = '<table class="log-table"><thead><tr><th>Cycle</th><th>Now</th><th>Own baseline</th><th>Line</th></tr></thead><tbody>';
+  state.cycles.forEach(function(c){
+    var e = c.entries.slice().sort(function(a,b){ return a.date<b.date?-1:1; });
+    var now = findOvulation(e), own = c.unclear ? null : findShiftOwnBaseline(e);
+    var nowTxt = c.unclear ? 'unclear' : now ? 'CD'+cycleDayNum(c, e[now.ovIdx].date)+(now.manual?' (yours)':'') : 'none';
+    var ownTxt = c.unclear ? 'unclear' : own ? 'CD'+cycleDayNum(c, own.date) : 'none';
+    html += '<tr><td>'+formatDateShort(c.startDate)+'</td><td>'+nowTxt+'</td><td>'+ownTxt+'</td><td>'+(own?own.line.toFixed(2):'—')+'</td></tr>';
+  });
+  out.innerHTML = html + '</tbody></table><div style="font-size:10px;color:var(--text-muted);padding-top:6px;">Preview only. Nothing in Lumin has changed.</div>';
+}
+
 function getPhase(cd, ovCD) {
   if (cd <= 5) return 'menstrual';
   var assumedOv = ovCD || 15; // default to CD15 if no confirmed OV
@@ -1756,6 +1784,7 @@ function drawOverview() {
   }
   html += '</tbody></table></div>';
 
+  html += '<div style="margin-top:14px;text-align:center;"><button class="action-btn" onclick="compareCoverLine()">Preview new cover line</button></div><div id="coverCompare" style="margin-top:8px;"></div>';
   container.innerHTML = html;
 
   // Now draw each mini canvas
