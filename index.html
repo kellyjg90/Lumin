@@ -359,6 +359,7 @@ canvas{display:block;width:100%;}
         <span class="tag sym-tag" data-tag="fatigue" onclick="toggleSymTag(this)">Fatigue</span>
         <span class="tag sym-tag" data-tag="headache" onclick="toggleSymTag(this)">Headache</span>
         <span class="tag sym-tag" data-tag="back pain" onclick="toggleSymTag(this)">Back Pain</span>
+        <span class="tag sym-tag" data-tag="rib back burning" onclick="toggleSymTag(this)">Rib/Back Burning</span>
         <span class="tag sym-tag" data-tag="joint pain" onclick="toggleSymTag(this)">Joint Pain</span>
         <span class="tag sym-tag" data-tag="lightheadedness" onclick="toggleSymTag(this)">Lightheaded</span>
         <span class="tag sym-tag" data-tag="palpitations" onclick="toggleSymTag(this)">Palpitations</span>
@@ -489,7 +490,7 @@ canvas{display:block;width:100%;}
 <script>
 var activeTags = {};
 var state = { cycles: [], currentCycleIdx: 0 };
-var ALL_SYMPTOMS = ['period','period light','period heavy','spotting','pms','cramps','pelvic pain','breast tenderness','acne','bloating','gas','nausea','constipation','diarrhea','appetite changes','fatigue','headache','back pain','joint pain','lightheadedness','palpitations','insomnia','brain fog','itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','mittelschmerz','egg white cm','increased libido','breast sensitivity','light spotting','anxious','irritable','low mood','energetic','calm','sick','stuffy nose','postnasal drip','throat lump','stuck swallow','breathing trouble','dry mouth','cough after eating','face eye swelling','jaw clenching','rough falling asleep','flare day','arm hand pain','takeout or restaurant'];
+var ALL_SYMPTOMS = ['period','period light','period heavy','spotting','pms','cramps','pelvic pain','breast tenderness','acne','bloating','gas','nausea','constipation','diarrhea','appetite changes','fatigue','headache','back pain','rib back burning','joint pain','lightheadedness','palpitations','insomnia','brain fog','itchy eyes','itchy skin','hives','runny nose','sneezing','flushing','mittelschmerz','egg white cm','increased libido','breast sensitivity','light spotting','anxious','irritable','low mood','energetic','calm','sick','stuffy nose','postnasal drip','throat lump','stuck swallow','breathing trouble','dry mouth','cough after eating','face eye swelling','jaw clenching','rough falling asleep','flare day','arm hand pain','takeout or restaurant'];
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
 var STORAGE_KEY = 'lumin_bbt_v2';
