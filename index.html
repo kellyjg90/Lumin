@@ -1700,45 +1700,23 @@ function drawOverview() {
     }
   }
 
-  function trendLabel(arr) {
-    if (arr.length < 2) return null;
-    var first = arr[0]; var last = arr[arr.length-1];
-    var diff = last - first;
-    if (Math.abs(diff) <= 1) return 'stable';
-    return diff > 0 ? 'getting longer' : 'getting shorter';
-  }
   function avg(arr) {
-    if (arr.length === 0) return null;
     var s = 0; for (var i = 0; i < arr.length; i++) s += arr[i];
     return Math.round(s / arr.length);
   }
+  // Average and range only: first-vs-last comparisons made normal variation look like a trend
+  function trendRow(title, arr, color) {
+    return '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">'
+      + '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';flex-shrink:0;margin-top:4px;"></div>'
+      + '<div><div style="font-size:12px;color:var(--text);margin-bottom:2px;">'+title+'</div>'
+      + '<div style="font-size:11px;color:var(--text-dim);">Averaging <span style="color:'+color+';font-family:\'DM Mono\',monospace;">'+avg(arr)+' days</span>, ranging '+Math.min.apply(null,arr)+'–'+Math.max.apply(null,arr)+' across '+arr.length+' cycles.</div></div></div>';
+  }
 
-  var hasTrends = cycleLens.length >= 2 || lutealLens.length >= 2;
-  if (hasTrends) {
+  if (cycleLens.length >= 2 || lutealLens.length >= 2) {
     html += '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:14px;margin-bottom:4px;">';
-    html += '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Trends</div>';
-
-    if (cycleLens.length >= 2) {
-      var cAvg = avg(cycleLens);
-      var cTrend = trendLabel(cycleLens);
-      var cColor = cTrend === 'stable' ? 'var(--sage)' : 'var(--amber)';
-      html += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">';
-      html += '<div style="width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:4px;"></div>';
-      html += '<div><div style="font-size:12px;color:var(--text);margin-bottom:2px;">Cycle length</div>';
-      html += '<div style="font-size:11px;color:var(--text-dim);">Averaging <span style="color:var(--gold);font-family:\'DM Mono\',monospace;">'+cAvg+' days</span> — <span style="color:'+cColor+';">'+cTrend+'</span> across your last '+cycleLens.length+' cycles.</div></div></div>';
-    }
-
-    if (lutealLens.length >= 2) {
-      var lAvg = avg(lutealLens);
-      var lTrend = trendLabel(lutealLens);
-      var lColor = lTrend === 'stable' ? 'var(--sage)' : (lTrend === 'getting shorter' ? 'var(--rose)' : 'var(--amber)');
-      var lNote = lAvg < 10 ? ' A luteal phase under 10 days can be worth discussing with your doctor.' : (lAvg >= 12 ? ' A healthy luteal phase is typically 12–16 days.' : '');
-      html += '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">';
-      html += '<div style="width:6px;height:6px;border-radius:50%;background:#7aab8a;flex-shrink:0;margin-top:4px;"></div>';
-      html += '<div><div style="font-size:12px;color:var(--text);margin-bottom:2px;">Luteal phase</div>';
-      html += '<div style="font-size:11px;color:var(--text-dim);">Averaging <span style="color:#7aab8a;font-family:\'DM Mono\',monospace;">'+lAvg+' days</span> — <span style="color:'+lColor+';">'+lTrend+'</span>.'+lNote+'</div></div></div>';
-    }
-
+    html += '<div style="font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Your ranges</div>';
+    if (cycleLens.length >= 2) html += trendRow('Cycle length', cycleLens, 'var(--gold)');
+    if (lutealLens.length >= 2) html += trendRow('Luteal phase', lutealLens, '#7aab8a');
     html += '</div>';
   }
 
