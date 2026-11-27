@@ -1871,7 +1871,7 @@ function phaseSlot(idx, date, ovDate) {
 // For each symptom: in how many cycles it showed up in each window.
 // "logged" is how many cycles had any symptom logged in that window.
 function buildPhaseTable() {
-  var syms = {}, logged = [0,0,0,0,0], unplaced = 0;
+  var syms = {}, days = {}, logged = [0,0,0,0,0], unplaced = 0;
   state.cycles.forEach(function(cyc, idx){
     var ov = ovDateOf(cyc), seen = [{},{},{},{},{}], any = [false,false,false,false,false];
     cyc.entries.forEach(function(e){
@@ -1880,14 +1880,18 @@ function buildPhaseTable() {
       var slot = phaseSlot(idx, e.date, ov);
       if (slot < 0) { unplaced++; return; }
       any[slot] = true;
-      tags.forEach(function(t){ seen[slot][t] = true; });
+      tags.forEach(function(t, n){
+        if (tags.indexOf(t) !== n) return;
+        seen[slot][t] = true;
+        days[t] = days[t] || [0,0,0,0,0]; days[t][slot]++;
+      });
     });
     for (var i = 0; i < 5; i++) {
       if (any[i]) logged[i]++;
       for (var t in seen[i]) { syms[t] = syms[t] || [0,0,0,0,0]; syms[t][i]++; }
     }
   });
-  var rows = Object.keys(syms).map(function(n){ return { name: n, counts: syms[n] }; });
+  var rows = Object.keys(syms).map(function(n){ return { name: n, counts: syms[n], days: days[n] }; });
   rows.sort(function(a,b){
     return Math.max.apply(null,b.counts) - Math.max.apply(null,a.counts) || (a.name < b.name ? -1 : 1);
   });
@@ -1903,13 +1907,13 @@ function renderPatterns(){
     body.innerHTML = '<div class="empty-state">Keep logging symptoms. They appear here once one repeats in the same window in 2 cycles.</div>';
     return;
   }
-  var html = '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.6;">Each number is cycles with that symptom, out of cycles where you logged any symptom in that window.</div>';
+  var html = '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.6;">How many cycles had that symptom (out of cycles where you logged any symptom in that window), then total days.</div>';
   rows.forEach(function(r){
     html += '<div style="padding:12px 16px;border-bottom:1px solid var(--border);">';
     html += '<div style="font-size:13px;color:var(--text);margin-bottom:4px;">' + capName(r.name) + '</div>';
     for (var i = 0; i < 5; i++) {
       if (!r.counts[i]) continue;
-      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);line-height:1.8;"><span style="color:'+PHASE_DOTS[i]+';">'+PHASE_COLS[i]+'</span><span>'+r.counts[i]+' of '+t.logged[i]+' cycles</span></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);line-height:1.8;"><span style="color:'+PHASE_DOTS[i]+';">'+PHASE_COLS[i]+'</span><span>in '+r.counts[i]+' of '+t.logged[i]+' cycles \u00b7 '+r.days[i]+' day'+(r.days[i]!==1?'s':'')+'</span></div>';
     }
     html += '</div>';
   });
@@ -2282,9 +2286,9 @@ function buildDoctorReport(){
   }
   var table=buildPhaseTable();
   var patternRows=table.rows.map(function(r){
-    return '<tr><td>'+capName(r.name)+'</td>'+r.counts.map(function(n,i){ return '<td>'+(n?n+'/'+table.logged[i]:'—')+'</td>'; }).join('')+'</tr>';
+    return '<tr><td>'+capName(r.name)+'</td>'+r.counts.map(function(n,i){ return '<td>'+(n?n+'/'+table.logged[i]+' · '+r.days[i]+'d':'—')+'</td>'; }).join('')+'</tr>';
   }).join('');
-  var patternNote='<p class="note">Cycles with the symptom / cycles with any symptom logged in that window. Menstrual: cycle days 1–5. Late luteal: last 5 days before the next period (in the current cycle, 8+ days after ovulation). Ovulation: estimated or manually set day ±1. Early luteal: between ovulation and late luteal. Follicular: between menstrual and ovulation. Entries that could not be placed: '+table.unplaced+'.</p>';
+  var patternNote='<p class="note">Cycles with the symptom / cycles with any symptom logged in that window, then total days logged (d). Menstrual: cycle days 1–5. Late luteal: last 5 days before the next period (in the current cycle, 8+ days after ovulation). Ovulation: estimated or manually set day ±1. Early luteal: between ovulation and late luteal. Follicular: between menstrual and ovulation. Entries that could not be placed: '+table.unplaced+'.</p>';
   var ratingRows='';
   var coughNm=['None','Mild','Bad'];
   for(var rc=0;rc<state.cycles.length;rc++){
