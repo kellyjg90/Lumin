@@ -842,6 +842,7 @@ function saveEditStartDate() {
   state.cycles[editingStartDateIdx].startDate = newDate;
   // Re-sort cycles by start date
   state.cycles.sort(function(a,b){ return a.startDate < b.startDate ? -1 : 1; });
+  regroupEntries();
   // Find the edited cycle's new index
   for (var i = 0; i < state.cycles.length; i++) {
     if (state.cycles[i].startDate === newDate) { state.currentCycleIdx = i; break; }
@@ -1127,6 +1128,18 @@ function editFromDisplay() {
   document.getElementById('logForm').style.display='block';
 }
 
+// After a start date changes, file every day under the cycle its date falls in
+function regroupEntries() {
+  var all = [];
+  state.cycles.forEach(function(c){ all = all.concat(c.entries); c.entries = []; });
+  all.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; });
+  all.forEach(function(e){
+    var home = state.cycles[0];
+    state.cycles.forEach(function(c){ if (c.startDate <= e.date) home = c; });
+    home.entries.push(e);
+  });
+}
+
 function setCycleStart(val) {
   if (!val) return;
   var idx = state.currentCycleIdx; var cyc = state.cycles[idx];
@@ -1134,6 +1147,7 @@ function setCycleStart(val) {
   var next = idx < state.cycles.length-1 ? state.cycles[idx+1] : null;
   if ((prev && val <= prev.startDate) || (next && val >= next.startDate)) { showToast('Start date must fall between neighboring cycles'); render(); return; }
   cyc.startDate = val;
+  regroupEntries();
   saveState(); render(); onDateChange();
   showToast('Cycle day 1 set to ' + formatDateShort(val));
 }
