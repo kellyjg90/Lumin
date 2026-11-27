@@ -207,6 +207,9 @@ canvas{display:block;width:100%;}
       <div class="chart-actions">
         <button class="action-btn" onclick="openDoctorExport()">Export</button>
         <button class="action-btn" onclick="exportCSV()">CSV</button>
+        <button class="action-btn" onclick="saveBackup()">Backup</button>
+        <button class="action-btn" onclick="document.getElementById('restoreInput').click()">Restore</button>
+        <input type="file" id="restoreInput" accept=".json,application/json" style="display:none" onchange="restoreBackup(this)">
       </div>
     </div>
     <div class="tab-bar">
@@ -2110,6 +2113,44 @@ function exportCSV(){
   }
   var blob=new Blob([csv],{type:'text/csv'}); var a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='lumin_cycle_'+(state.currentCycleIdx+1)+'.csv'; a.click();
+}
+
+// Full copy of every cycle. Saving only reads the data.
+function saveBackup(){
+  var blob=new Blob([JSON.stringify(state)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='lumin_backup_'+todayStr()+'.json'; a.click();
+}
+function parseBackup(text){
+  try {
+    var p=JSON.parse(text);
+    var date=/^\d{4}-\d{2}-\d{2}$/;
+    var ok=p && Array.isArray(p.cycles) && p.cycles.length>0 && p.cycles.every(function(c){
+      return c && date.test(c.startDate) && Array.isArray(c.entries) && c.entries.every(function(e){
+        return e && date.test(e.date) && (e.temp===null || e.temp===undefined || typeof e.temp==='number');
+      });
+    });
+    return ok ? p : null;
+  } catch(e) { return null; }
+}
+function applyBackup(text){
+  var p=parseBackup(text);
+  if(!p){ showToast('That file is not a Lumin backup. Nothing changed.'); return false; }
+  var days=function(st){ return st.cycles.reduce(function(n,c){return n+c.entries.length;},0); };
+  if(!confirm('Replace what is in Lumin now ('+state.cycles.length+' cycles, '+days(state)+' days) with this backup ('+p.cycles.length+' cycles, '+days(p)+' days)?')) return false;
+  try { localStorage.setItem(STORAGE_KEY+'_backup_prerestore', JSON.stringify(state)); }
+  catch(e) { showToast('Could not keep a safety copy. Nothing changed.'); return false; }
+  state=migrateState(p);
+  if(state.currentCycleIdx<0) state.currentCycleIdx=state.cycles.length-1;
+  saveState(); render(); switchTab('cycle');
+  showToast('Backup restored');
+  return true;
+}
+function restoreBackup(input){
+  var file=input.files && input.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(){ applyBackup(reader.result); input.value=''; };
+  reader.readAsText(file);
 }
 
 function openDoctorExport(){
