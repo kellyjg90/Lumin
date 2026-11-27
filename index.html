@@ -782,6 +782,28 @@ function buildProfile() {
   return profile;
 }
 
+// Heads-up: only symptoms that usually show up in one stretch (the same ones
+// Patterns calls "Most often"), shown shortly before that stretch.
+function getHeadsUp(cd, avgLen) {
+  var t = buildPhaseTable();
+  function usual(slot) {
+    return t.rows.filter(function(r){
+      return r.name !== 'sick' && t.logged[slot] >= 3 && r.counts[slot] / t.logged[slot] >= 0.7 &&
+        patternSummary(r.counts, t.logged) === 'Most often ' + PAT_WORDS[slot];
+    }).slice(0,3).map(function(r){ return r.name === 'pms' ? 'PMS' : r.name; });
+  }
+  function say(names, where, when) {
+    if (!names.length) return null;
+    var list = names.length > 1 ? names.slice(0,-1).join(', ') + ' and ' + names[names.length-1] : names[0];
+    return 'Heads up: ' + list.charAt(0).toUpperCase() + list.slice(1) + ' usually show' + (names.length > 1 ? '' : 's') + ' up ' + where + '. ' + when;
+  }
+  var toPeriod = avgLen - cd + 1; // days until the next period is expected
+  if (cd >= 3 && cd <= 5) return say(usual(1), 'after your period', 'Those days start soon.');
+  if (toPeriod >= 0 && toPeriod <= 10) return say(usual(4), 'before your period',
+    toPeriod > 6 ? 'Those days start in about ' + (toPeriod - 5) + ' day' + (toPeriod - 5 !== 1 ? 's' : '') + '.' : 'Those days are about now.');
+  return null;
+}
+
 function getPersonalInsight(cd, phase, profile, todayTags) {
   // Returns a personal insight string if data is available, otherwise null
   var insights = [];
@@ -2099,7 +2121,7 @@ function render() {
     if (cycle.entries[ei].date === today) { todayTags = cycle.entries[ei].tags || []; break; }
   }
 
-  var personalInsight = getPersonalInsight(currentCD, todayPhase, profile, todayTags);
+  var personalInsight = (isCurrentCycle && getHeadsUp(currentCD, profile.avgCycleLen)) || getPersonalInsight(currentCD, todayPhase, profile, todayTags);
   renderDailyCard(currentCD, todayPhase, personalInsight, cdRefDate);
 
   // Next period — use profile for smarter estimate
