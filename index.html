@@ -243,7 +243,7 @@ canvas{display:block;width:100%;}
       <div id="miniChartsContainer"></div>
     </div>
     <div id="panelHrv" style="display:none;padding-top:12px;">
-      <div class="ci-seg" id="hrvMode" style="margin-bottom:8px;"><button data-m="o" onclick="setHrvMode('o')">Overnight</button><button data-m="a" onclick="setHrvMode('a')">7-day avg</button></div>
+      <div class="ci-seg" id="hrvMode" style="margin-bottom:8px;"><button data-m="o" onclick="setHrvMode('o')">Overnight</button><button data-m="a" onclick="setHrvMode('a')">7-day avg</button><button data-m="r" onclick="setHrvMode('r')">Breathing</button></div>
       <canvas id="hrvChart" height="220"></canvas>
       <div style="display:flex;gap:12px;font-size:10px;color:var(--text-muted);margin:4px 0 8px;flex-wrap:wrap;"><span><span style="display:inline-block;width:14px;height:3px;background:#7aabc9;margin-right:4px;vertical-align:middle;"></span>This cycle</span><span><span style="display:inline-block;width:14px;height:3px;background:#c9a96e;margin-right:4px;vertical-align:middle;"></span>Your average</span><span><span style="display:inline-block;width:14px;height:2px;background:rgba(122,171,138,0.5);margin-right:4px;vertical-align:middle;"></span>Past cycles</span></div>
       <div id="hrvBody"></div>
@@ -330,8 +330,8 @@ canvas{display:block;width:100%;}
       </div>
       <button class="ci-chk" id="ciLying" onclick="ciToggleLying()">Worse lying down</button>
       <button class="ci-chk" id="ciPeriod" onclick="ciTogglePeriod()">Period started this day</button>
-      <div class="ci-label">Garmin HRV, ms (last night)</div>
-      <div style="display:flex;gap:6px;"><input class="ci-note" id="ciHrvO" type="number" inputmode="numeric" placeholder="Overnight" style="margin-top:0;" onchange="hrvSet('o',this.value)"><input class="ci-note" id="ciHrvA" type="number" inputmode="numeric" placeholder="7-day avg" style="margin-top:0;" onchange="hrvSet('a',this.value)"></div>
+      <div class="ci-label">Garmin last night: HRV (ms) and sleep breathing rate</div>
+      <div style="display:flex;gap:6px;"><input class="ci-note" id="ciHrvO" type="number" inputmode="numeric" placeholder="Overnight" style="margin-top:0;" onchange="hrvSet('o',this.value)"><input class="ci-note" id="ciHrvA" type="number" inputmode="numeric" placeholder="7-day avg" style="margin-top:0;" onchange="hrvSet('a',this.value)"><input class="ci-note" id="ciHrvR" type="number" inputmode="decimal" step="0.1" placeholder="Breaths/min" style="margin-top:0;" onchange="hrvSet('r',this.value)"></div>
       <input class="ci-note" id="ciNote" type="text" maxlength="200" placeholder="One-line note (optional)" onchange="ciSetNote(this.value)">
       <div class="ci-saved" id="ciSaved"></div>
     </div>
@@ -1406,6 +1406,7 @@ function ciRender() {
   var ho = hrvGet(date,'o'), ha = hrvGet(date,'a');
   document.getElementById('ciHrvO').value = ho == null ? '' : ho;
   document.getElementById('ciHrvA').value = ha == null ? '' : ha;
+  var hr = hrvGet(date,'r'); document.getElementById('ciHrvR').value = hr == null ? '' : hr;
 }
 function ciCommit(msg) {
   saveState(); render(); ciRender();
@@ -2470,8 +2471,10 @@ function applyHrvSeed(p) {
 }
 function hrvGet(date, f) { var r = state.hrv && state.hrv[date]; return r && r[f] != null ? r[f] : null; }
 function hrvSetFor(date, f, val) {
-  var v = (val === '' || val == null) ? null : Math.round(parseFloat(val));
-  if (v !== null && (isNaN(v) || v < 5 || v > 250)) { showToast('HRV should be a number like 28'); return false; }
+  var v = (val === '' || val == null) ? null : parseFloat(val);
+  if (v !== null) v = f === 'r' ? Math.round(v*10)/10 : Math.round(v);
+  if (v !== null && f === 'r' && (isNaN(v) || v < 5 || v > 40)) { showToast('Breathing rate should be a number like 15.4'); return false; }
+  if (v !== null && f !== 'r' && (isNaN(v) || v < 5 || v > 250)) { showToast('HRV should be a number like 28'); return false; }
   if (!state.hrv) state.hrv = {};
   if (!state.hrv[date]) state.hrv[date] = {};
   state.hrv[date][f] = v;
@@ -2479,18 +2482,19 @@ function hrvSetFor(date, f, val) {
 }
 function hrvSet(f, val) {
   if (!hrvSetFor(ciDate(), f, val)) { ciRender(); return; }
-  var s = document.getElementById('ciSaved'); if (s) s.textContent = 'HRV saved';
+  var s = document.getElementById('ciSaved'); if (s) s.textContent = f === 'r' ? 'Breathing rate saved' : 'HRV saved';
   if (document.getElementById('panelHrv').style.display === 'block') renderHrv();
 }
 // Lets a phone shortcut open Lumin with ?hrv=31 (and optional &hrvavg=29&date=YYYY-MM-DD)
 function hrvFromUrl() {
   try {
     var q = new URLSearchParams(location.search);
-    if (!q.has('hrv') && !q.has('hrvavg')) return;
+    if (!q.has('hrv') && !q.has('hrvavg') && !q.has('resp')) return;
     var date = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : todayStr();
     var ok = true;
     if (q.has('hrv')) ok = hrvSetFor(date, 'o', q.get('hrv')) && ok;
     if (q.has('hrvavg')) ok = hrvSetFor(date, 'a', q.get('hrvavg')) && ok;
+    if (q.has('resp')) ok = hrvSetFor(date, 'r', q.get('resp')) && ok;
     history.replaceState(null, '', location.pathname);
     if (ok) showToast('HRV saved for ' + formatDateShort(date));
   } catch(e) {}
@@ -2506,7 +2510,7 @@ function hrvCycles() {
   return starts.map(function(s, i){
     var next = starts[i+1] || null, cyc = byStart[s];
     var pts = dates.filter(function(d){ return d >= s && (!next || d < next); }).map(function(d){
-      return { date: d, cd: dayGap(s, d) + 1, o: hrvGet(d,'o'), a: hrvGet(d,'a'), n: state.hrv[d].n };
+      return { date: d, cd: dayGap(s, d) + 1, o: hrvGet(d,'o'), a: hrvGet(d,'a'), r: hrvGet(d,'r'), n: state.hrv[d].n };
     });
     return { start: s, next: next, ov: cyc ? ovDateOf(cyc) : null, pts: pts };
   });
@@ -2562,7 +2566,7 @@ function drawHrvChart(cycles) {
   ctx.fillStyle = '#15110e'; ctx.fillRect(0, 0, W, H);
   var f = hrvMode, vals = [], maxCD = 28;
   cycles.forEach(function(c){ c.pts.forEach(function(p){ if (p[f] != null) { vals.push(p[f]); if (p.cd <= 35) maxCD = Math.max(maxCD, p.cd); } }); });
-  if (!vals.length) { ctx.fillStyle = '#9a8b7d'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText('HRV will show here once logged', W/2, H/2); return; }
+  if (!vals.length) { ctx.fillStyle = '#9a8b7d'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText(f === 'r' ? 'Breathing rate will show here once logged' : 'HRV will show here once logged', W/2, H/2); return; }
   var lo = Math.floor(Math.min.apply(null, vals)) - 1, hi = Math.ceil(Math.max.apply(null, vals)) + 1;
   var PAD = { top: 10, right: 12, bottom: 22, left: 28 };
   var cw = W - PAD.left - PAD.right, ch = H - PAD.top - PAD.bottom;
@@ -2615,10 +2619,10 @@ function renderHrv() {
       html += '<div style="display:flex;align-items:center;gap:8px;">'
         + '<span style="width:120px;flex:none;">' + PAT_SHORT[i] + '</span>'
         + '<span style="flex:1;height:8px;border-radius:4px;background:var(--surface2);"><span style="display:block;height:8px;border-radius:4px;width:' + w.toFixed(0) + '%;background:' + PHASE_DOTS[i] + ';"></span></span>'
-        + '<span style="width:52px;text-align:right;">' + x.avg.toFixed(1) + ' ms</span></div>';
+        + '<span style="width:52px;text-align:right;">' + x.avg.toFixed(1) + (hrvMode === 'r' ? '' : ' ms') + '</span></div>';
     });
     var hiI = ph.indexOf(have[avgs.indexOf(top)]), loI = ph.indexOf(have[avgs.indexOf(bot)]);
-    html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Highest ' + PAT_WORDS[hiI] + ', lowest ' + PAT_WORDS[loI] + ' (' + (top - bot).toFixed(1) + ' ms apart).</div></div>';
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Highest ' + PAT_WORDS[hiI] + ', lowest ' + PAT_WORDS[loI] + ' (' + (top - bot).toFixed(1) + (hrvMode === 'r' ? ' breaths/min' : ' ms') + ' apart).</div></div>';
   }
   if (hrvMode === 'o') {
     var sy = hrvBySymptom();
