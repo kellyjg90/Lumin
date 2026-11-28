@@ -216,6 +216,7 @@ canvas{display:block;width:100%;}
       <button class="tab-btn active" id="tabCycle" onclick="switchTab('cycle')">This Cycle</button>
       <button class="tab-btn" id="tabOverview" onclick="switchTab('overview')">All Cycles</button>
       <button class="tab-btn" id="tabPatterns" onclick="switchTab('patterns')">Patterns</button>
+      <button class="tab-btn" id="tabHrv" onclick="switchTab('hrv')">HRV</button>
     </div>
     <div id="panelCycle" style="padding-top:12px;">
       <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);margin-bottom:8px;">
@@ -240,6 +241,12 @@ canvas{display:block;width:100%;}
     </div>
     <div id="panelOverview" style="display:none;padding-top:12px;">
       <div id="miniChartsContainer"></div>
+    </div>
+    <div id="panelHrv" style="display:none;padding-top:12px;">
+      <div class="ci-seg" id="hrvMode" style="margin-bottom:8px;"><button data-m="o" onclick="setHrvMode('o')">Overnight</button><button data-m="a" onclick="setHrvMode('a')">7-day avg</button></div>
+      <canvas id="hrvChart" height="220"></canvas>
+      <div style="display:flex;gap:12px;font-size:10px;color:var(--text-muted);margin:4px 0 8px;flex-wrap:wrap;"><span><span style="display:inline-block;width:14px;height:3px;background:#7aabc9;margin-right:4px;vertical-align:middle;"></span>This cycle</span><span><span style="display:inline-block;width:14px;height:3px;background:#c9a96e;margin-right:4px;vertical-align:middle;"></span>Your average</span><span><span style="display:inline-block;width:14px;height:2px;background:rgba(122,171,138,0.5);margin-right:4px;vertical-align:middle;"></span>Past cycles</span></div>
+      <div id="hrvBody"></div>
     </div>
     <div id="panelPatterns" style="display:none;">
       <div id="patternsBody"><div class="empty-state">Log symptoms to reveal patterns.</div></div>
@@ -323,6 +330,8 @@ canvas{display:block;width:100%;}
       </div>
       <button class="ci-chk" id="ciLying" onclick="ciToggleLying()">Worse lying down</button>
       <button class="ci-chk" id="ciPeriod" onclick="ciTogglePeriod()">Period started this day</button>
+      <div class="ci-label">Garmin HRV, ms (last night)</div>
+      <div style="display:flex;gap:6px;"><input class="ci-note" id="ciHrvO" type="number" inputmode="numeric" placeholder="Overnight" style="margin-top:0;" onchange="hrvSet('o',this.value)"><input class="ci-note" id="ciHrvA" type="number" inputmode="numeric" placeholder="7-day avg" style="margin-top:0;" onchange="hrvSet('a',this.value)"></div>
       <input class="ci-note" id="ciNote" type="text" maxlength="200" placeholder="One-line note (optional)" onchange="ciSetNote(this.value)">
       <div class="ci-saved" id="ciSaved"></div>
     </div>
@@ -568,6 +577,7 @@ function migrateState(p) {
     if (!p.cycles[i].startDate) p.cycles[i].startDate = todayStr();
     for (var q = 0; q < p.cycles[i].entries.length; q++) { var re = p.cycles[i].entries[q]; if (re.ratings && typeof re.ratings !== 'object') delete re.ratings; }
   }
+  applyHrvSeed(p);
   return p;
 }
 
@@ -1299,7 +1309,7 @@ function showToast(msg) {
 
 // ─── TABS ────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  var tabs=['cycle','overview','patterns'];
+  var tabs=['cycle','overview','patterns','hrv'];
   for(var i=0;i<tabs.length;i++){
     var p=document.getElementById('panel'+tabs[i].charAt(0).toUpperCase()+tabs[i].slice(1));
     if(p) p.style.display=(tabs[i]===tab)?'block':'none';
@@ -1309,6 +1319,7 @@ function switchTab(tab) {
   if(tab==='cycle'){drawChart(currentCycle());}
   if(tab==='overview'){drawOverview();}
   if(tab==='patterns'){renderPatterns();}
+  if(tab==='hrv'){renderHrv();}
 }
 function toggleEntries() {
   var body=document.getElementById('logBody'); var chevron=document.getElementById('entriesChevron');
@@ -1392,6 +1403,9 @@ function ciRender() {
   var hasPeriod = !!(e && e.tags && (e.tags.indexOf('period') >= 0 || e.tags.indexOf('period light') >= 0 || e.tags.indexOf('period heavy') >= 0));
   document.getElementById('ciPeriod').className = 'ci-chk' + (hasPeriod ? ' on' : '');
   document.getElementById('ciNote').value = r.note || '';
+  var ho = hrvGet(date,'o'), ha = hrvGet(date,'a');
+  document.getElementById('ciHrvO').value = ho == null ? '' : ho;
+  document.getElementById('ciHrvA').value = ha == null ? '' : ha;
 }
 function ciCommit(msg) {
   saveState(); render(); ciRender();
@@ -2433,8 +2447,197 @@ function buildDoctorReport(){
     +changeHtml
     +'<h2>Cycle Charts</h2>'+cycleRows
     +'<h2>Symptom Patterns</h2>'+(patternRows?'<table><thead><tr><th>Symptom</th>'+PHASE_COLS.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>'+patternRows+'</tbody></table>'+patternNote:'<p class="note">No symptoms logged.</p>')
+    +(function(){ var ph=hrvByPhase('o'); var r=''; ph.forEach(function(x,i){ if(x&&x.n>=5) r+='<tr><td>'+PAT_SHORT[i]+'</td><td>'+x.avg.toFixed(1)+' ms</td><td>'+x.n+'</td></tr>'; }); return r?'<h2>Overnight HRV by Cycle Phase (Garmin)</h2><table><thead><tr><th>Window</th><th>Average</th><th>Nights</th></tr></thead><tbody>'+r+'</tbody></table><p class="note">RMSSD from a Garmin watch, averaged over all logged nights in each window. A date\'s reading is the night ending that morning.</p>':''; })()
     +'<h2>Daily Check-in Ratings (0–10)</h2>'+ratingsHtml
     +'<h2>Clinical Notes</h2><p class="note">Basal body temperature logged daily upon waking. Ovulation is estimated when 3 temperatures exceed the highest of the preceding 6 usable temperatures (the cover line), with the third at least 0.36°F above it or a 4th also above it. The estimated ovulation day is the usable reading before the first high one. This excludes mornings tagged disturbed sleep, alcohol or sick; entries marked "set manually" were chosen by the user. Data is self-tracked and should be interpreted in a clinical context. Tracked using Lumin BBT app.</p></body></html>';
+}
+
+// ─── HRV (Garmin) ────────────────────────────────────────────────────────────
+// state.hrv = { 'YYYY-MM-DD': { o: overnight ms, a: 7-day avg ms, n: note } }.
+// A date's HRV is the night that ended that morning (Garmin's date).
+// HRV_SEED is history added by Claude; it fills gaps but never overwrites what she entered.
+var HRV_SEED = {"2026-02-08":{"a":23},"2026-02-09":{"a":25},"2026-02-10":{"a":25},"2026-02-11":{"a":25},"2026-02-12":{"a":25},"2026-02-13":{"a":26},"2026-02-14":{"a":26},"2026-02-15":{"a":26},"2026-02-16":{"a":25},"2026-02-17":{"a":25},"2026-02-18":{"a":25},"2026-02-19":{"a":25},"2026-02-20":{"a":24},"2026-02-21":{"a":24},"2026-02-22":{"a":24},"2026-02-23":{"a":24},"2026-02-24":{"a":24},"2026-02-25":{"a":23},"2026-02-26":{"a":23},"2026-02-27":{"a":23},"2026-02-28":{"a":23},"2026-03-01":{"a":23},"2026-03-02":{"a":24},"2026-03-03":{"a":23},"2026-03-04":{"a":24},"2026-03-05":{"a":24},"2026-03-06":{"a":24},"2026-03-07":{"a":25},"2026-03-08":{"a":26},"2026-03-09":{"a":26},"2026-03-10":{"a":26},"2026-03-11":{"a":27},"2026-03-12":{"a":27},"2026-03-13":{"a":27},"2026-03-14":{"a":26},"2026-03-15":{"a":26},"2026-03-16":{"a":26},"2026-03-17":{"a":26},"2026-03-18":{"a":26},"2026-03-19":{"a":25},"2026-03-20":{"a":24},"2026-03-21":{"a":25},"2026-03-22":{"a":25},"2026-03-23":{"a":24},"2026-03-24":{"a":24},"2026-03-25":{"a":23},"2026-03-26":{"a":24},"2026-03-27":{"a":24},"2026-03-28":{"a":24},"2026-03-29":{"a":24},"2026-03-30":{"a":24},"2026-03-31":{"a":24},"2026-04-01":{"a":25},"2026-04-02":{"a":25},"2026-04-03":{"a":26},"2026-04-04":{"a":27},"2026-04-05":{"a":27},"2026-04-06":{"a":26},"2026-04-07":{"a":26},"2026-04-08":{"a":26},"2026-04-09":{"a":26},"2026-04-10":{"a":25},"2026-04-11":{"a":25},"2026-04-12":{"a":24},"2026-04-13":{"a":25},"2026-04-14":{"a":24},"2026-04-15":{"a":24},"2026-04-16":{"a":24},"2026-04-17":{"a":24},"2026-04-18":{"a":24},"2026-04-19":{"a":24},"2026-04-20":{"a":24},"2026-04-21":{"a":25},"2026-04-22":{"a":25},"2026-04-23":{"a":24},"2026-04-24":{"a":25},"2026-04-25":{"a":25},"2026-04-26":{"a":25},"2026-04-27":{"a":25},"2026-04-28":{"a":25},"2026-04-29":{"a":26},"2026-04-30":{"a":27},"2026-05-01":{"a":27},"2026-05-02":{"a":27},"2026-05-03":{"a":27},"2026-05-04":{"a":27},"2026-05-05":{"a":28},"2026-05-06":{"a":27},"2026-05-07":{"a":26},"2026-05-08":{"a":26},"2026-05-09":{"a":26},"2026-05-10":{"a":26},"2026-05-11":{"a":26},"2026-05-12":{"a":24},"2026-05-13":{"a":24},"2026-05-14":{"a":24},"2026-05-15":{"a":23},"2026-05-16":{"a":24},"2026-05-17":{"a":24},"2026-05-18":{"a":23},"2026-05-19":{"a":24},"2026-05-20":{"a":25},"2026-05-21":{"a":26},"2026-05-22":{"a":27},"2026-05-23":{"a":27},"2026-05-24":{"a":28},"2026-05-25":{"a":29},"2026-05-26":{"a":29},"2026-05-27":{"a":28},"2026-05-28":{"a":28},"2026-05-29":{"a":28},"2026-05-30":{"a":28},"2026-05-31":{"a":28},"2026-06-01":{"a":26},"2026-06-02":{"a":25},"2026-06-03":{"a":26},"2026-06-04":{"a":26},"2026-06-05":{"a":26},"2026-06-06":{"a":26},"2026-06-07":{"a":26},"2026-06-08":{"a":25},"2026-06-09":{"a":25},"2026-06-10":{"a":24},"2026-06-11":{"a":24},"2026-06-12":{"a":23,"o":21,"n":"travel (Argentina)"},"2026-06-13":{"a":22,"o":23,"n":"travel (Argentina)"},"2026-06-14":{"a":23,"o":28,"n":"travel (Argentina)"},"2026-06-15":{"a":24,"o":31,"n":"travel (Argentina)"},"2026-06-16":{"a":25,"o":31,"n":"travel (Argentina)"},"2026-06-17":{"a":25,"o":20,"n":"travel (Argentina)"},"2026-06-18":{"a":25,"o":24,"n":"travel (Argentina)"},"2026-06-19":{"a":26,"o":30,"n":"flu onset, flew home"},"2026-06-20":{"a":26,"o":19,"n":"flu, high stress"},"2026-06-21":{"a":25,"o":27},"2026-06-22":{"a":26,"o":32},"2026-06-23":{"a":26,"o":34},"2026-06-24":{"a":27,"o":27},"2026-06-25":{"a":28,"o":32},"2026-06-26":{"a":29,"o":31},"2026-06-27":{"a":31,"o":31},"2026-06-28":{"a":32,"o":37},"2026-06-29":{"a":32,"o":31},"2026-06-30":{"a":31,"o":27},"2026-07-01":{"a":31,"o":28},"2026-07-02":{"a":30,"o":28},"2026-07-03":{"a":29,"o":24},"2026-07-04":{"a":29,"o":27,"n":"partial night, watch died"},"2026-07-05":{"a":27,"o":25},"2026-07-06":{"a":27,"o":27},"2026-07-07":{"a":27,"o":29},"2026-07-08":{"a":27,"o":31},"2026-07-09":{"a":28,"o":33},"2026-07-10":{"a":29,"o":31},"2026-07-11":{"a":29,"o":31},"2026-07-12":{"a":29,"o":26},"2026-07-13":{"a":30,"o":32},"2026-07-14":{"a":30,"o":30},"2026-07-15":{"a":30,"o":26},"2026-07-16":{"a":29,"o":27},"2026-07-17":{"a":29,"o":32},"2026-07-18":{"a":29,"o":29},"2026-07-19":{"a":29,"o":25},"2026-07-20":{"a":28,"o":30},"2026-07-21":{"a":27,"o":23},"2026-07-22":{"a":28,"o":29},"2026-07-23":{"a":28,"o":27},"2026-07-24":{"a":27,"o":26},"2026-07-25":{"a":27,"o":30},"2026-07-26":{"a":27,"o":27},"2026-07-27":{"a":27,"o":24},"2026-07-28":{"a":26,"o":22},"2026-07-29":{"a":26,"o":24},"2026-07-30":{"a":25,"o":22},"2026-07-31":{"a":25,"o":23},"2026-08-01":{"a":24,"o":27},"2026-08-02":{"a":24,"o":29},"2026-08-03":{"a":25,"o":30},"2026-08-04":{"a":26,"o":29},"2026-08-05":{"a":27,"o":32},"2026-08-06":{"a":28,"o":26},"2026-08-07":{"a":29,"o":29},"2026-08-08":{"a":30,"o":33},"2026-08-09":{"a":29,"o":26},"2026-08-10":{"a":29,"o":31},"2026-08-11":{"a":30,"o":29},"2026-08-12":{"a":29,"o":30},"2026-08-13":{"a":30,"o":33},"2026-08-14":{"a":30,"o":29},"2026-08-15":{"a":29,"o":24},"2026-08-16":{"a":29,"o":27},"2026-08-17":{"a":28,"o":27},"2026-08-18":{"a":28,"o":27},"2026-08-19":{"a":28,"o":29},"2026-08-20":{"a":27,"o":28},"2026-08-21":{"a":27,"o":26},"2026-08-22":{"a":27,"o":25},"2026-08-23":{"a":27,"o":28},"2026-08-24":{"a":27,"o":24},"2026-08-25":{"a":26,"o":26},"2026-08-26":{"a":26,"o":24},"2026-08-27":{"a":25,"o":22},"2026-08-28":{"a":25,"o":25},"2026-08-29":{"a":25,"o":26},"2026-08-30":{"a":25,"o":25},"2026-08-31":{"a":25,"o":24},"2026-09-01":{"a":25,"o":28},"2026-09-02":{"a":25,"o":25},"2026-09-03":{"a":25,"o":24},"2026-09-04":{"a":26,"o":30},"2026-09-05":{"a":26,"o":24},"2026-09-06":{"a":26,"o":29},"2026-09-07":{"a":27,"o":26},"2026-09-08":{"a":26,"o":28},"2026-09-09":{"a":27,"o":32},"2026-09-10":{"a":29,"o":33},"2026-09-11":{"a":28,"o":28},"2026-09-12":{"a":29,"o":27},"2026-09-13":{"a":28,"o":27},"2026-09-14":{"a":29,"o":32},"2026-09-15":{"a":29,"o":27},"2026-09-16":{"a":29,"o":28},"2026-09-17":{"a":28,"o":26},"2026-09-18":{"a":28,"o":27},"2026-09-19":{"a":28,"o":25},"2026-09-20":{"a":28,"o":25},"2026-09-21":{"a":27,"o":25},"2026-09-22":{"a":26,"o":25},"2026-09-23":{"a":26,"o":24},"2026-09-24":{"a":26,"o":27},"2026-09-25":{"a":25,"o":24},"2026-09-26":{"a":25,"o":26},"2026-09-27":{"a":25,"o":26},"2026-09-28":{"a":25,"o":25},"2026-09-29":{"a":26,"o":31},"2026-09-30":{"a":27,"o":30},"2026-10-01":{"a":27,"o":30},"2026-10-02":{"a":28,"o":27},"2026-10-03":{"a":28,"n":"watch died overnight"},"2026-10-04":{"a":29,"o":28},"2026-10-05":{"a":29,"o":26,"n":"travel"},"2026-10-06":{"a":27,"o":22,"n":"travel"},"2026-10-07":{"a":26,"o":24,"n":"travel"},"2026-10-08":{"a":25,"o":22,"n":"travel"},"2026-10-09":{"a":25,"o":30},"2026-10-10":{"a":26,"o":29},"2026-10-11":{"a":26,"o":30},"2026-10-12":{"a":27,"o":32},"2026-10-13":{"a":28,"o":28},"2026-10-14":{"a":28,"o":27},"2026-10-15":{"a":29,"o":28},"2026-10-16":{"a":29,"o":26},"2026-10-17":{"a":28,"o":25},"2026-10-18":{"a":27,"o":24},"2026-10-19":{"a":26,"o":26},"2026-10-20":{"a":26,"o":26},"2026-10-21":{"a":25,"o":22},"2026-10-22":{"a":25,"o":28},"2026-10-23":{"a":25,"o":26},"2026-10-24":{"a":26,"o":30},"2026-10-25":{"a":27,"o":29},"2026-10-26":{"a":27,"o":31},"2026-10-27":{"a":28,"o":32},"2026-10-28":{"a":30,"o":32},"2026-10-29":{"a":30,"o":32},"2026-10-30":{"a":30,"o":27},"2026-10-31":{"a":30,"o":26},"2026-11-01":{"a":29,"o":27},"2026-11-02":{"a":29},"2026-11-03":{"a":29,"o":33},"2026-11-04":{"a":29,"o":29},"2026-11-05":{"a":28,"o":26},"2026-11-06":{"a":27,"o":23},"2026-11-07":{"a":27,"o":28},"2026-11-08":{"a":27,"o":23},"2026-11-09":{"a":28,"o":27},"2026-11-10":{"a":27,"o":29},"2026-11-11":{"a":26,"o":27},"2026-11-12":{"a":26},"2026-11-13":{"a":27,"o":24},"2026-11-14":{"a":25,"o":20},"2026-11-15":{"a":25,"o":22},"2026-11-16":{"a":24,"o":24},"2026-11-17":{"a":24,"o":25},"2026-11-18":{"a":24,"o":28,"n":"urgent care, steroid shot"},"2026-11-19":{"a":25,"o":36,"n":"steroid shot may raise readings"},"2026-11-20":{"a":27,"o":43,"n":"steroid shot may raise readings"},"2026-11-21":{"a":29,"o":33},"2026-11-22":{"a":31,"o":32},"2026-11-23":{"a":31,"o":27},"2026-11-24":{"a":32,"o":30},"2026-11-25":{"a":32,"o":29},"2026-11-26":{"a":31,"o":29},"2026-11-27":{"a":30,"o":31}};
+// Period starts from before Lumin's first cycle, so early HRV still gets a cycle day
+var HRV_EXTRA_STARTS = ['2026-02-08','2026-03-06'];
+var hrvMode = 'o';
+function applyHrvSeed(p) {
+  if (!p.hrv || typeof p.hrv !== 'object') p.hrv = {};
+  for (var d in HRV_SEED) {
+    var r = p.hrv[d] || (p.hrv[d] = {}), s = HRV_SEED[d];
+    for (var f in s) if (!(f in r)) r[f] = s[f];
+  }
+  return p;
+}
+function hrvGet(date, f) { var r = state.hrv && state.hrv[date]; return r && r[f] != null ? r[f] : null; }
+function hrvSetFor(date, f, val) {
+  var v = (val === '' || val == null) ? null : Math.round(parseFloat(val));
+  if (v !== null && (isNaN(v) || v < 5 || v > 250)) { showToast('HRV should be a number like 28'); return false; }
+  if (!state.hrv) state.hrv = {};
+  if (!state.hrv[date]) state.hrv[date] = {};
+  state.hrv[date][f] = v;
+  saveState(); return true;
+}
+function hrvSet(f, val) {
+  if (!hrvSetFor(ciDate(), f, val)) { ciRender(); return; }
+  var s = document.getElementById('ciSaved'); if (s) s.textContent = 'HRV saved';
+  if (document.getElementById('panelHrv').style.display === 'block') renderHrv();
+}
+// Lets a phone shortcut open Lumin with ?hrv=31 (and optional &hrvavg=29&date=YYYY-MM-DD)
+function hrvFromUrl() {
+  try {
+    var q = new URLSearchParams(location.search);
+    if (!q.has('hrv') && !q.has('hrvavg')) return;
+    var date = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : todayStr();
+    var ok = true;
+    if (q.has('hrv')) ok = hrvSetFor(date, 'o', q.get('hrv')) && ok;
+    if (q.has('hrvavg')) ok = hrvSetFor(date, 'a', q.get('hrvavg')) && ok;
+    history.replaceState(null, '', location.pathname);
+    if (ok) showToast('HRV saved for ' + formatDateShort(date));
+  } catch(e) {}
+}
+function setHrvMode(m) { hrvMode = m; renderHrv(); }
+// Every cycle (Lumin's plus the early ones), with its days of HRV
+function hrvCycles() {
+  var starts = HRV_EXTRA_STARTS.filter(function(s){ return !state.cycles.length || s < state.cycles[0].startDate; })
+    .concat(state.cycles.map(function(c){ return c.startDate; }));
+  starts.sort();
+  var byStart = {}; state.cycles.forEach(function(c){ byStart[c.startDate] = c; });
+  var dates = Object.keys(state.hrv || {}).sort();
+  return starts.map(function(s, i){
+    var next = starts[i+1] || null, cyc = byStart[s];
+    var pts = dates.filter(function(d){ return d >= s && (!next || d < next); }).map(function(d){
+      return { date: d, cd: dayGap(s, d) + 1, o: hrvGet(d,'o'), a: hrvGet(d,'a'), n: state.hrv[d].n };
+    });
+    return { start: s, next: next, ov: cyc ? ovDateOf(cyc) : null, pts: pts };
+  });
+}
+// 0 during period, 1 after period, 2 around ovulation, 3 after ovulation, 4 before period
+function hrvSlot(c, p) {
+  if (p.cd <= 5) return 0;
+  if (c.next && dayGap(p.date, c.next) <= 5) return 4;
+  if (!c.ov) return p.cd <= 10 ? 1 : -1;
+  var d = dayGap(c.ov, p.date);
+  if (d < -1) return 1;
+  if (d <= 1) return 2;
+  return 3;
+}
+function hrvByPhase(f) {
+  var sum = [0,0,0,0,0], n = [0,0,0,0,0];
+  hrvCycles().forEach(function(c){ c.pts.forEach(function(p){
+    var v = p[f]; if (v == null) return;
+    var s = hrvSlot(c, p); if (s < 0) return;
+    sum[s] += v; n[s]++;
+  }); });
+  return sum.map(function(t, i){ return n[i] ? { avg: t/n[i], n: n[i] } : null; });
+}
+// Overnight HRV the night after each symptom day, compared with all nights
+function hrvBySymptom() {
+  var tagsOn = {};
+  state.cycles.forEach(function(c){ c.entries.forEach(function(e){ tagsOn[e.date] = (tagsOn[e.date] || []).concat(e.tags || []); }); });
+  var all = [], by = {};
+  Object.keys(state.hrv || {}).forEach(function(d){
+    var v = hrvGet(d, 'o'); if (v == null) return;
+    if (/steroid|flu/i.test(state.hrv[d].n || '')) return; // readings skewed by illness or medication
+    all.push(v);
+    var seen = {};
+    (tagsOn[addDays(d, -1)] || []).forEach(function(t){
+      if (seen[t] || ALL_SYMPTOMS.indexOf(t) < 0 || /^period/.test(t)) return;
+      seen[t] = true; (by[t] = by[t] || []).push(v);
+    });
+  });
+  var base = all.length ? all.reduce(function(a,b){return a+b;},0)/all.length : null;
+  var rows = Object.keys(by).filter(function(t){ return by[t].length >= 3; }).map(function(t){
+    var avg = by[t].reduce(function(a,b){return a+b;},0)/by[t].length;
+    return { name: t, avg: avg, n: by[t].length, diff: avg - base };
+  });
+  rows.sort(function(a,b){ return a.diff - b.diff; });
+  return { base: base, rows: rows };
+}
+function drawHrvChart(cycles) {
+  var canvas = document.getElementById('hrvChart'); if (!canvas) return;
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.parentElement.clientWidth; if (W <= 0) W = 300;
+  var H = 220; canvas.width = W*dpr; canvas.height = H*dpr; canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#15110e'; ctx.fillRect(0, 0, W, H);
+  var f = hrvMode, vals = [], maxCD = 28;
+  cycles.forEach(function(c){ c.pts.forEach(function(p){ if (p[f] != null) { vals.push(p[f]); if (p.cd <= 35) maxCD = Math.max(maxCD, p.cd); } }); });
+  if (!vals.length) { ctx.fillStyle = '#9a8b7d'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText('HRV will show here once logged', W/2, H/2); return; }
+  var lo = Math.floor(Math.min.apply(null, vals)) - 1, hi = Math.ceil(Math.max.apply(null, vals)) + 1;
+  var PAD = { top: 10, right: 12, bottom: 22, left: 28 };
+  var cw = W - PAD.left - PAD.right, ch = H - PAD.top - PAD.bottom;
+  function tx(cd){ return PAD.left + ((cd-1)/(maxCD-1))*cw; }
+  function ty(v){ return PAD.top + ch - ((v-lo)/(hi-lo))*ch; }
+  ctx.strokeStyle = '#2a2119'; ctx.fillStyle = '#6b5d50'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  var step = (hi-lo) > 16 ? 5 : 2;
+  for (var g = Math.ceil(lo/step)*step; g <= hi; g += step) { var gy = ty(g); ctx.beginPath(); ctx.moveTo(PAD.left, gy); ctx.lineTo(W-PAD.right, gy); ctx.stroke(); ctx.fillText(g, PAD.left-4, gy); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (var d = 1; d <= maxCD; d += 7) ctx.fillText('CD'+d, tx(d), H-PAD.bottom+6);
+  function line(pts, color, width) {
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+    var on = false;
+    pts.forEach(function(p){ if (p.v == null || p.cd > maxCD) { on = false; return; } if (on) ctx.lineTo(tx(p.cd), ty(p.v)); else ctx.moveTo(tx(p.cd), ty(p.v)); on = true; });
+    ctx.stroke(); ctx.lineWidth = 1;
+  }
+  var cur = cycles[cycles.length-1], past = cycles.slice(0, -1);
+  past.forEach(function(c){ line(c.pts.map(function(p){ return { cd: p.cd, v: p[f] }; }), 'rgba(122,171,138,0.22)', 1); });
+  // Average of past cycles by cycle day, smoothed over 3 days
+  var tot = {}, cnt = {};
+  past.forEach(function(c){ c.pts.forEach(function(p){ if (p[f] == null) return; tot[p.cd] = (tot[p.cd]||0) + p[f]; cnt[p.cd] = (cnt[p.cd]||0) + 1; }); });
+  var avgPts = [];
+  for (var cd = 1; cd <= maxCD; cd++) {
+    var s = 0, n = 0;
+    for (var k = cd-1; k <= cd+1; k++) if (cnt[k] >= 2) { s += tot[k]/cnt[k]; n++; }
+    avgPts.push({ cd: cd, v: n ? s/n : null });
+  }
+  line(avgPts, '#c9a96e', 2.5);
+  var curPts = cur.pts.map(function(p){ return { cd: p.cd, v: p[f] }; });
+  line(curPts, '#7aabc9', 2);
+  ctx.fillStyle = '#7aabc9';
+  curPts.forEach(function(p){ if (p.v != null && p.cd <= maxCD) { ctx.beginPath(); ctx.arc(tx(p.cd), ty(p.v), 2.5, 0, 6.3); ctx.fill(); } });
+}
+function renderHrv() {
+  var segs = document.getElementById('hrvMode').children;
+  for (var i = 0; i < segs.length; i++) segs[i].className = segs[i].getAttribute('data-m') === hrvMode ? 'on' : '';
+  var cycles = hrvCycles();
+  drawHrvChart(cycles);
+  var body = document.getElementById('hrvBody');
+  var row = 'padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);line-height:1.6;';
+  var html = '';
+  var ph = hrvByPhase(hrvMode), have = ph.filter(function(x){ return x && x.n >= 5; });
+  if (have.length >= 3) {
+    var avgs = have.map(function(x){ return x.avg; });
+    var top = Math.max.apply(null, avgs), bot = Math.min.apply(null, avgs);
+    html += '<div style="' + row + '"><div style="font-size:15px;margin-bottom:6px;">By cycle phase</div>';
+    ph.forEach(function(x, i){
+      if (!x || x.n < 5) return;
+      var w = top > bot ? 25 + 75*(x.avg - bot)/(top - bot) : 100;
+      html += '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<span style="width:120px;flex:none;">' + PAT_SHORT[i] + '</span>'
+        + '<span style="flex:1;height:8px;border-radius:4px;background:var(--surface2);"><span style="display:block;height:8px;border-radius:4px;width:' + w.toFixed(0) + '%;background:' + PHASE_DOTS[i] + ';"></span></span>'
+        + '<span style="width:52px;text-align:right;">' + x.avg.toFixed(1) + ' ms</span></div>';
+    });
+    var hiI = ph.indexOf(have[avgs.indexOf(top)]), loI = ph.indexOf(have[avgs.indexOf(bot)]);
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Highest ' + PAT_WORDS[hiI] + ', lowest ' + PAT_WORDS[loI] + ' (' + (top - bot).toFixed(1) + ' ms apart).</div></div>';
+  }
+  if (hrvMode === 'o') {
+    var sy = hrvBySymptom();
+    var shown = sy.rows.filter(function(r){ return Math.abs(r.diff) >= 1.5; }).slice(0, 8);
+    if (sy.base != null) {
+      html += '<div style="' + row + '"><div style="font-size:15px;margin-bottom:2px;">The night after a symptom</div>'
+        + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Your usual overnight HRV is ' + sy.base.toFixed(1) + ' ms. Shown once a tag has 3+ nights.</div>';
+      if (shown.length) shown.forEach(function(r){
+        html += '<div style="display:flex;"><span style="flex:1;">' + capName(r.name) + ' <span style="color:var(--text-muted);font-size:11px;">(' + r.n + ' nights)</span></span>'
+          + '<span style="color:' + (r.diff < 0 ? 'var(--rose)' : 'var(--sage)') + ';">' + r.avg.toFixed(1) + ' ms (' + (r.diff > 0 ? '+' : '') + r.diff.toFixed(1) + ')</span></div>';
+      });
+      else html += '<div style="font-size:12px;color:var(--text-muted);">Nothing stands out yet.</div>';
+      html += '</div>';
+    }
+  }
+  var notes = [];
+  cycles.forEach(function(c){ c.pts.forEach(function(p){ if (p.n) notes.push(formatDateShort(p.date) + ': ' + p.n); }); });
+  if (notes.length) html += '<div style="' + row + 'font-size:11px;color:var(--text-muted);"><div style="margin-bottom:2px;">Notes on readings</div>' + notes.slice(-6).reverse().join('<br>') + '</div>';
+  body.innerHTML = html;
 }
 
 // ─── ONBOARDING ──────────────────────────────────────────────────────────────
@@ -2470,6 +2673,7 @@ function init() {
     document.getElementById('onboarding').style.display = 'block';
   } else {
     document.getElementById('dateInput').value = todayStr();
+    hrvFromUrl();
     render();
   }
   window.addEventListener('resize', function(){ drawChart(currentCycle()); });
